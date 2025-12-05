@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte CONECTEA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+        }
+        h1, h2, h3 {
+            color: #2E7D32;
+        }
+        .seccion {
+            margin-bottom: 20px;
+        }
+        .tabla-datos {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .tabla-datos th, .tabla-datos td {
+            border: 1px solid #ccc;
+            padding: 6px 8px;
+        }
+        .tabla-datos th {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Reporte de Evaluación CONECTEA</h1>
+
+    <div class="seccion">
+        <h2>Datos del niño(a)</h2>
+        <p><strong>Sexo:</strong> {{ datos.sexo }}</p>
+        <p><strong>Edad:</strong> {{ datos.edad }}</p>
+    </div>
+
+    <div class="seccion">
+        <h2>Resultado de la Predicción</h2>
+        <p><strong>Score total (0-40):</strong> {{ resultado.score }}</p>
+        <p><strong>Nivel de autismo:</strong> {{ resultado.clase_predicha_texto }}</p>
+
+        <h3>Probabilidades</h3>
+        <ul>
+            {% for nivel, prob in resultado.probabilidades.items() %}
+                <li>{{ nivel }}: {{ prob|round(3) }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="seccion">
+        <h2>Respuestas al Cuestionario</h2>
+        <table class="tabla-datos">
+            <thead>
+                <tr>
+                    <th>Pregunta</th>
+                    <th>Respuesta</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for valor in datos.respuestas %}
+                    <tr>
+                        <td>Q{{ loop.index }}</td>
+                        <td>{{ "Sí" if valor == 1 else "No" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>

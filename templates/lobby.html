@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenido a CONECTEA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- Contenedor general del home -->
+    <div class="home-wrapper">
+
+        <!-- Logo centrado arriba -->
+        <img src="{{ url_for('static', filename='images/logo.png') }}"
+             alt="CONECTEA"
+             class="home-logo">
+
+        <!-- Tarjeta blanca con el mensaje -->
+        <div class="lobby-container">
+            <h1>¡Bienvenido!</h1>
+            <p>Herramienta de apoyo para padres: Para comenzar con la evaluación y recibir un diagnóstico preliminar, por favor presiona el botón a continuación.</p>
+            <button onclick="window.location.href='/registro'" class="submit-btn">
+                Iniciar Evaluación
+            </button>
+        </div>
+
+    </div>
+
+</body>
+</html>

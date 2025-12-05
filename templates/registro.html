@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Datos - CONECTEA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Logo igual que en el formulario -->
+        <img src="{{ url_for('static', filename='images/logo.png') }}"
+             class="form-logo"
+             alt="CONECTEA">
+
+        <h2 style="text-align:center; margin-bottom: 20px;">
+            Registro de Datos
+        </h2>
+
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('registro') }}">
+
+            <div class="form-row">
+                <label for="nombre_padre" class="form-label">Nombre del padre:</label>
+                <input type="text"
+                       id="nombre_padre"
+                       name="nombre_padre"
+                       class="form-input">
+            </div>
+
+            <div class="form-row">
+                <label for="nombre_madre" class="form-label">Nombre de la madre:</label>
+                <input type="text"
+                       id="nombre_madre"
+                       name="nombre_madre"
+                       class="form-input">
+            </div>
+
+            <div class="form-row">
+                <label for="nombre_paciente" class="form-label">Nombre del paciente:</label>
+                <input type="text"
+                       id="nombre_paciente"
+                       name="nombre_paciente"
+                       class="form-input"
+                       required>
+            </div>
+
+            <div class="form-row">
+                <label for="distrito" class="form-label">Distrito:</label>
+                <input type="text"
+                       id="distrito"
+                       name="distrito"
+                       class="form-input"
+                       required>
+            </div>
+
+            <div class="form-row">
+                <label for="telefono" class="form-label">Número telefónico:</label>
+                <input type="tel"
+                       id="telefono"
+                       name="telefono"
+                       class="form-input"
+                       required>
+            </div>
+
+            <div class="form-row">
+                <label for="correo" class="form-label">Correo electrónico:</label>
+                <input type="email"
+                       id="correo"
+                       name="correo"
+                       class="form-input"
+                       required>
+            </div>
+
+            <button type="submit" class="submit-btn submit-btn-small">
+                Continuar al Cuestionario
+            </button>
+        </form>
+    </div>
+</body>
+</html>

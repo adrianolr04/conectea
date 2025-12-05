@@ -1,0 +1,15 @@
+# Entorno virtual (si algún día lo creas aquí)
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# CSV grandes que no deben ir al repo
+BD_MITERAP.csv
+Casos_reales.csv

@@ -1,0 +1,348 @@
+/* Fondo de la página con gradiente */
+body {
+    background: linear-gradient(45deg, #868686, #868686);  /* Gradiente de colores */
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 0 20px;  /* Margen a los lados */
+}
+
+/* Estilos para el lobby */
+.lobby-container {
+    text-align: center;
+    max-width: 800px;
+    width: 100%;
+    margin-top: 5px;
+    padding: 30px;
+    background-color: rgba(255, 255, 255, 0.8);  /* Fondo semitransparente para que resalte */
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    font-size: 36px;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;  /* Centramos el título */
+}
+
+p {
+    font-size: 18px;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+/* Botón general */
+.submit-btn {
+    background-color: #000000;
+    color: white;
+    padding: 15px 30px;
+    border-radius: 5px;
+    font-size: 18px;
+    border: none;
+    cursor: pointer;
+}
+
+.submit-btn:hover {
+    background-color: #868686;
+}
+
+/* Estilos para el formulario/contenedor principal */
+.container {
+    max-width: 1200px;
+    width: 100%;
+    margin: 20px auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+}
+
+/* Estilos para las preguntas */
+.preguntas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Múltiples columnas según el tamaño */
+    gap: 20px;  /* Espaciado entre las preguntas */
+    margin-bottom: 20px;
+    text-align: center;  /* Centrado del texto de las preguntas */
+}
+
+/* Ajuste del espacio y estilo de cada pregunta */
+.pregunta {
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #fafafa;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Ocultamos el radio nativo (el puntito) */
+input[type="radio"] {
+    display: none;
+}
+
+/* Contenedor de las opciones */
+.opciones {
+    display: flex;
+    flex-direction: column;  /* si los quieres uno debajo del otro */
+    gap: 10px;
+}
+
+/* Botón visual (No / Sí) */
+.radio-label {
+    display: block;
+    padding: 15px 20px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.radio-label:hover {
+    background-color: #e7e7e7;
+}
+
+/* Cuando el radio está seleccionado, se pinta el botón */
+input[type="radio"]:checked + .radio-label {
+    background-color: #000000;   /* color del botón seleccionado */
+    color: #ffffff;
+    border-color: #000000;
+}
+
+/* Estilos para los campos Sexo y Edad */
+form .input-group {
+    display: flex;
+    justify-content: center;  /* Centrado horizontal */
+    gap: 30px;  /* Espaciado entre los campos */
+    margin-bottom: 20px;
+}
+
+/* Estilos de resultados y errores */
+.resultado, .error {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.resultado {
+    background-color: #e7f7e7;
+    color: #3c763d;
+}
+
+.error {
+    background-color: #f2dede;
+    color: #a94442;
+}
+
+/* Botón de Enviar en formularios */
+.submit-btn {
+    background-color: #000000;
+    color: white;
+    padding: 15px 30px;
+    border-radius: 5px;
+    font-size: 18px;
+    border: none;
+    cursor: pointer;
+    margin-top: 20px;
+    width: 100%;
+}
+
+.submit-btn:hover {
+    background-color: #45a049;
+}
+
+/* Imagen en la esquina superior derecha */
+.header-image {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 300px;  /* Ajusta el tamaño según sea necesario */
+    height: auto;
+}
+
+/* Logo en formularios */
+.form-logo {
+    display: block;
+    margin: 0 auto 20px;  /* centrado + espacio con el formulario */
+    width: 360px;         /* ajusta el tamaño a tu gusto */
+    height: auto;
+}
+
+/* Contenedor vertical del home (logo + tarjeta) */
+.home-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+/* Logo centrado arriba en el home */
+.home-logo {
+    width: 500px;      /* hazlo más grande/pequeño a gusto */
+    height: auto;
+    margin-top: 40px;  /* separación con la parte superior de la página */
+    margin-bottom: 20px; /* espacio entre el logo y la tarjeta blanca */
+}
+
+/* Contenedor general del resultado */
+.card-resultado {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 24px 28px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+}
+
+/* -------------------  BARRA DE SCORE  ------------------- */
+
+
+.score-widget {
+    margin: 20px 0;
+}
+
+/* Barra coloreada de severidad (verde → amarillo → naranja → rojo) */
+.score-bar {
+    position: relative;
+    width: 100%;
+    height: 14px;
+    border-radius: 999px;
+    background: linear-gradient(
+        to right,
+        #22c55e 0%,    /* verde - más bajo */
+        #eab308 33%,   /* amarillo - leve */
+        #f97316 66%,   /* naranja - moderado */
+        #ef4444 100%   /* rojo - más alto */
+    );
+    overflow: visible;
+}
+
+/* Marcador (palito negro) */
+.score-marker {
+    position: absolute;
+    top: -4px;
+    transform: translateX(-50%);
+    width: 0;
+    height: 22px;
+    border-left: 3px solid #111827;
+    z-index: 2;
+}
+
+/* Números 0-40 debajo */
+.score-scale {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 6px;
+}
+
+/* Leyenda bajo la barra */
+.score-legend {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.score-legend .legend {
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #f3f4f6;
+}
+
+/* Colores de texto en la leyenda */
+.score-legend .sin      { color: #22c55e; }
+.score-legend .leve     { color: #eab308; }
+.score-legend .moderado { color: #f97316; }
+.score-legend .severo   { color: #ef4444; }
+/* Contenedor del botón en la página de resultado */
+.resultado-footer {
+    display: flex;
+    justify-content: center;   /* centra el botón horizontalmente */
+    margin-top: 25px;
+}
+
+/* Ajuste del botón solo en la página de resultado */
+.resultado-footer .submit-btn {
+    width: auto;               /* que no ocupe todo el ancho */
+    padding: 10px 30px;
+    text-align: center;
+}
+
+/* Wrapper de botones de resultado */
+.button-wrapper {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.button-wrapper .submit-btn {
+    display: inline-block;
+    width: auto;           /* para que no ocupen todo el ancho */
+    min-width: 220px;
+    margin: 0 10px;
+}
+
+/* Estilo diferente para el botón de PDF */
+.pdf-btn {
+    background-color: #555;
+}
+
+.pdf-btn:hover {
+    background-color: #333;
+}
+
+
+/* =================== ESTILO DE LOS TEXTBOX =================== */
+
+.form-input {
+    width: 320px;              /* tamaño uniforme */
+    padding: 10px 12px;
+    font-size: 16px;
+    border: 1.5px solid #cfcfcf;
+    border-radius: 6px;
+    background-color: #fafafa;
+    transition: all 0.25s ease;
+}
+
+/* Contenedor para centrar las filas */
+.form-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+/* Etiquetas */
+.form-label {
+    width: 180px;               /* ancho fijo para alinear bonito */
+    text-align: right;
+    margin-right: 12px;
+    font-size: 20px;
+    font-weight: 500;
+}
+
+/* Efectos de focus */
+.form-input:focus {
+    outline: none;
+    border-color: #3b82f6;      /* azul profesional */
+    background-color: #ffffff;
+    box-shadow: 0 0 6px rgba(59,130,246,0.35);
+}
+
+
+/* Botón más pequeño y centrado solo para algunos formularios */
+.submit-btn-small {
+    width: auto;              /* que no ocupe todo el ancho */
+    padding: 10px 40px;       /* más compacto */
+    display: block;
+    margin: 25px auto 0;      /* centrado */
+}
+
