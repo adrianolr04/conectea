@@ -1,33 +1,42 @@
+import json
 import os
 from datetime import datetime
+from functools import wraps
+
+import psycopg2
+from fpdf import FPDF
 from flask import (
     Flask,
+    flash,
+    make_response,
+    redirect,
     render_template,
     request,
-    redirect,
-    url_for,
     session,
-    make_response,
+    url_for,
 )
-from miterap_model import MiterapModel
-from fpdf import FPDF  # pip install fpdf2
-import psycopg2
+from psycopg2.extras import RealDictCursor
+from werkzeug.security import check_password_hash, generate_password_hash
 
-# ==========================
-# CONFIG FLASK
-# ==========================
+from miterap_model import MiterapModel
+
+
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_secret_key")
 
-# ==========================
-# CONFIG BD POSTGRES
-# ==========================
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_NAME = os.getenv("DB_NAME", "CONECTEA")
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "adriano13")
 DB_PORT = int(os.getenv("DB_PORT", 5432))
 
+DEFAULT_ADMIN_NAME = os.getenv("ADMIN_NAME", "Administrador")
+DEFAULT_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@conectea.local")
+DEFAULT_ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+
+SCHEMA_READY = False
+
+modelo = MiterapModel(artifacts_dir="artifacts")
 
 
 def get_connection():
@@ -40,45 +49,555 @@ def get_connection():
     )
 
 
-# ==========================
-# CARGA DEL MODELO
-# ==========================
-modelo = MiterapModel(artifacts_dir="artifacts")
+def ensure_schema():
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY,
+                nombre_completo VARCHAR(150) NOT NULL,
+                correo VARCHAR(150) UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                rol VARCHAR(20) NOT NULL CHECK (rol IN ('admin', 'especialista')),
+                activo BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS especialistas (
+                id SERIAL PRIMARY KEY,
+                usuario_id INT UNIQUE NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                especialidad VARCHAR(120),
+                numero_colegiatura VARCHAR(80),
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS pacientes (
+                id SERIAL PRIMARY KEY,
+                codigo VARCHAR(30) UNIQUE,
+                nombre_padre VARCHAR(150),
+                nombre_madre VARCHAR(150),
+                nombre_paciente VARCHAR(150) NOT NULL,
+                distrito VARCHAR(120),
+                telefono VARCHAR(30),
+                correo VARCHAR(150),
+                sexo VARCHAR(10),
+                edad INT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS evaluaciones (
+                id SERIAL PRIMARY KEY,
+                paciente_id INT NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
+                score NUMERIC(5, 2) NOT NULL,
+                score_pct NUMERIC(5, 2) NOT NULL,
+                nivel_autismo VARCHAR(80) NOT NULL,
+                probabilidades_json TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS respuestas_evaluacion (
+                id SERIAL PRIMARY KEY,
+                evaluacion_id INT UNIQUE NOT NULL REFERENCES evaluaciones(id) ON DELETE CASCADE,
+                q1 SMALLINT NOT NULL, q2 SMALLINT NOT NULL, q3 SMALLINT NOT NULL, q4 SMALLINT NOT NULL, q5 SMALLINT NOT NULL,
+                q6 SMALLINT NOT NULL, q7 SMALLINT NOT NULL, q8 SMALLINT NOT NULL, q9 SMALLINT NOT NULL, q10 SMALLINT NOT NULL,
+                q11 SMALLINT NOT NULL, q12 SMALLINT NOT NULL, q13 SMALLINT NOT NULL, q14 SMALLINT NOT NULL, q15 SMALLINT NOT NULL,
+                q16 SMALLINT NOT NULL, q17 SMALLINT NOT NULL, q18 SMALLINT NOT NULL, q19 SMALLINT NOT NULL, q20 SMALLINT NOT NULL,
+                q21 SMALLINT NOT NULL, q22 SMALLINT NOT NULL, q23 SMALLINT NOT NULL, q24 SMALLINT NOT NULL, q25 SMALLINT NOT NULL,
+                q26 SMALLINT NOT NULL, q27 SMALLINT NOT NULL, q28 SMALLINT NOT NULL, q29 SMALLINT NOT NULL, q30 SMALLINT NOT NULL,
+                q31 SMALLINT NOT NULL, q32 SMALLINT NOT NULL, q33 SMALLINT NOT NULL, q34 SMALLINT NOT NULL, q35 SMALLINT NOT NULL,
+                q36 SMALLINT NOT NULL, q37 SMALLINT NOT NULL, q38 SMALLINT NOT NULL, q39 SMALLINT NOT NULL, q40 SMALLINT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS notas_especialista (
+                id SERIAL PRIMARY KEY,
+                evaluacion_id INT NOT NULL REFERENCES evaluaciones(id) ON DELETE CASCADE,
+                especialista_id INT NOT NULL REFERENCES especialistas(id) ON DELETE CASCADE,
+                nota TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_evaluaciones_paciente_id ON evaluaciones(paciente_id);
+            CREATE INDEX IF NOT EXISTS idx_pacientes_codigo ON pacientes(codigo);
+            CREATE INDEX IF NOT EXISTS idx_usuarios_correo ON usuarios(correo);
+            """
+        )
+
+        cur.execute("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1;")
+        admin = cur.fetchone()
+        if not admin:
+            cur.execute(
+                """
+                INSERT INTO usuarios (nombre_completo, correo, password_hash, rol)
+                VALUES (%s, %s, %s, 'admin');
+                """,
+                (
+                    DEFAULT_ADMIN_NAME,
+                    DEFAULT_ADMIN_EMAIL,
+                    generate_password_hash(DEFAULT_ADMIN_PASSWORD),
+                ),
+            )
+
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
 
 
-# ---------------------------
-# HOME / LOBBY
-# ---------------------------
+@app.before_request
+def initialize_schema_once():
+    global SCHEMA_READY
+    if SCHEMA_READY:
+        return
+    ensure_schema()
+    SCHEMA_READY = True
+
+
+def fetch_one(query, params=None):
+    conn = get_connection()
+    try:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute(query, params or ())
+        row = cur.fetchone()
+        return dict(row) if row else None
+    finally:
+        cur.close()
+        conn.close()
+
+
+def fetch_all(query, params=None):
+    conn = get_connection()
+    try:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute(query, params or ())
+        rows = cur.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        cur.close()
+        conn.close()
+
+
+def login_required(*allowed_roles):
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped_view(*args, **kwargs):
+            user_role = session.get("user_role")
+            if not user_role:
+                flash("Debes iniciar sesion para acceder a esta seccion.", "error")
+                return redirect(url_for("login"))
+            if allowed_roles and user_role not in allowed_roles:
+                flash("No tienes permisos para acceder a esa vista.", "error")
+                return redirect(url_for("dashboard_redirect"))
+            return view_func(*args, **kwargs)
+
+        return wrapped_view
+
+    return decorator
+
+
+def get_specialist_by_user_id(user_id):
+    if not user_id:
+        return None
+    return fetch_one(
+        """
+        SELECT e.id, e.especialidad, e.numero_colegiatura
+        FROM especialistas e
+        WHERE e.usuario_id = %s;
+        """,
+        (user_id,),
+    )
+
+
+def get_current_user():
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+    return fetch_one(
+        """
+        SELECT id, nombre_completo, correo, rol, activo
+        FROM usuarios
+        WHERE id = %s;
+        """,
+        (user_id,),
+    )
+
+
+def build_evaluation_detail(evaluacion_id):
+    evaluacion = fetch_one(
+        """
+        SELECT
+            e.id,
+            e.score,
+            e.score_pct,
+            e.nivel_autismo,
+            e.probabilidades_json,
+            e.created_at,
+            p.id AS paciente_id,
+            p.codigo,
+            p.nombre_paciente,
+            p.nombre_padre,
+            p.nombre_madre,
+            p.distrito,
+            p.telefono,
+            p.correo,
+            p.sexo,
+            p.edad
+        FROM evaluaciones e
+        INNER JOIN pacientes p ON p.id = e.paciente_id
+        WHERE e.id = %s;
+        """,
+        (evaluacion_id,),
+    )
+    if not evaluacion:
+        return None
+
+    respuestas = fetch_one(
+        """
+        SELECT *
+        FROM respuestas_evaluacion
+        WHERE evaluacion_id = %s;
+        """,
+        (evaluacion_id,),
+    )
+
+    notas = fetch_all(
+        """
+        SELECT
+            n.id,
+            n.nota,
+            n.created_at,
+            u.nombre_completo AS especialista_nombre
+        FROM notas_especialista n
+        INNER JOIN especialistas e ON e.id = n.especialista_id
+        INNER JOIN usuarios u ON u.id = e.usuario_id
+        WHERE n.evaluacion_id = %s
+        ORDER BY n.created_at DESC;
+        """,
+        (evaluacion_id,),
+    )
+
+    probabilidades = {}
+    raw_probabilidades = evaluacion.get("probabilidades_json")
+    if raw_probabilidades:
+        try:
+            probabilidades = json.loads(raw_probabilidades)
+        except json.JSONDecodeError:
+            probabilidades = {}
+
+    respuestas_lista = []
+    if respuestas:
+        for index in range(1, 41):
+            respuestas_lista.append(
+                {
+                    "numero": index,
+                    "valor": respuestas.get(f"q{index}"),
+                }
+            )
+
+    evaluacion["probabilidades"] = probabilidades
+    evaluacion["respuestas"] = respuestas_lista
+    evaluacion["notas"] = notas
+    return evaluacion
+
+
+def dashboard_for_role():
+    role = session.get("user_role")
+    if role == "admin":
+        return url_for("admin_dashboard")
+    return url_for("specialist_dashboard")
+
+
+def pdf_safe(text):
+    value = "" if text is None else str(text)
+    return value.encode("latin-1", "replace").decode("latin-1")
+
+
+def add_pdf_header(pdf, logo_path, codigo):
+    pdf.set_fill_color(247, 245, 241)
+    pdf.rect(0, 0, 210, 38, style="F")
+    pdf.set_draw_color(225, 216, 206)
+    pdf.line(10, 38, 200, 38)
+
+    if logo_path and os.path.exists(logo_path):
+        pdf.image(logo_path, x=12, y=8, w=26)
+
+    pdf.set_xy(44, 9)
+    pdf.set_text_color(41, 51, 65)
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.cell(0, 8, pdf_safe("Reporte de Evaluacion"), new_x="LMARGIN", new_y="NEXT")
+    pdf.set_x(44)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(95, 105, 118)
+    pdf.cell(0, 5, pdf_safe("CONECTEA"), new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_xy(150, 11)
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_text_color(240, 124, 86)
+    pdf.cell(44, 5, pdf_safe("CODIGO"), align="R", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_x(150)
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_text_color(41, 51, 65)
+    pdf.cell(44, 5, pdf_safe(codigo), align="R", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_y(46)
+    pdf.set_text_color(31, 41, 55)
+
+
+def add_pdf_section_title(pdf, title):
+    pdf.ln(5)
+    pdf.set_draw_color(230, 223, 214)
+    pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
+    pdf.ln(3)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(80, 63, 49)
+    pdf.cell(0, 7, pdf_safe(title), new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(31, 41, 55)
+
+
+def add_pdf_info_grid(pdf, items, columns=2):
+    gap = 8
+    width = (pdf.w - pdf.l_margin - pdf.r_margin - gap * (columns - 1)) / columns
+    row_height = 14
+
+    for start in range(0, len(items), columns):
+        row_items = items[start:start + columns]
+        y = pdf.get_y()
+        max_height = row_height
+
+        for column, (label, value) in enumerate(row_items):
+            x = pdf.l_margin + column * (width + gap)
+            text_value = pdf_safe(value) or "-"
+            extra_lines = max(1, int(len(text_value) / 34) + 1)
+            box_height = max(row_height, 8 + extra_lines * 4)
+            max_height = max(max_height, box_height)
+
+            pdf.set_fill_color(251, 249, 246)
+            pdf.set_draw_color(228, 222, 214)
+            pdf.rect(x, y, width, box_height, style="DF")
+
+            pdf.set_xy(x + 3, y + 2.5)
+            pdf.set_font("Helvetica", "B", 8)
+            pdf.set_text_color(121, 112, 101)
+            pdf.cell(width - 6, 4, pdf_safe(label.upper()))
+
+            pdf.set_xy(x + 3, y + 7)
+            pdf.set_font("Helvetica", "", 10)
+            pdf.set_text_color(31, 41, 55)
+            pdf.multi_cell(width - 6, 4.3, text_value)
+
+        pdf.set_y(y + max_height + 4)
+
+
+def add_pdf_probabilities(pdf, probabilities):
+    if not probabilities:
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 7, "No hay probabilidades disponibles.", new_x="LMARGIN", new_y="NEXT")
+        return
+
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.set_fill_color(242, 237, 231)
+    pdf.set_text_color(80, 63, 49)
+    pdf.cell(110, 8, "Nivel", border=1, fill=True)
+    pdf.cell(0, 8, "Probabilidad", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(31, 41, 55)
+    fill = False
+    for nivel, prob in probabilities.items():
+        pct = max(0, min(float(prob) * 100, 100))
+        pdf.set_fill_color(251, 249, 246 if fill else 255)
+        pdf.cell(110, 8, pdf_safe(nivel), border=1, fill=fill)
+        pdf.cell(0, 8, pdf_safe(f"{pct:.1f}%"), border=1, fill=fill, new_x="LMARGIN", new_y="NEXT")
+        fill = not fill
+
+
+def add_pdf_responses_table(pdf, respuestas):
+    if not respuestas:
+        return
+
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_fill_color(242, 237, 231)
+    pdf.set_text_color(80, 63, 49)
+    col_w = [24, 20, 24, 20, 24, 20, 24, 20]
+    headers = ["Pregunta", "Resp.", "Pregunta", "Resp.", "Pregunta", "Resp.", "Pregunta", "Resp."]
+    for width, header in zip(col_w, headers):
+        pdf.cell(width, 8, header, border=1, align="C", fill=True)
+    pdf.ln()
+
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(31, 41, 55)
+    fill = False
+    for start in range(0, len(respuestas), 4):
+        row = respuestas[start:start + 4]
+        pdf.set_fill_color(251, 249, 246 if fill else 255)
+        for offset, value in enumerate(row):
+            respuesta = "Si" if value == 1 else "No"
+            pdf.cell(24, 7, pdf_safe(f"Q{start + offset + 1}"), border=1, align="C", fill=fill)
+            pdf.cell(20, 7, pdf_safe(respuesta), border=1, align="C", fill=fill)
+        for _ in range(4 - len(row)):
+            pdf.cell(24, 7, "", border=1, fill=fill)
+            pdf.cell(20, 7, "", border=1, fill=fill)
+        pdf.ln()
+        fill = not fill
+
+
+def build_pdf_document(data_eval, datos_personales, datos_nino, generated_at=None):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_title("Reporte de Evaluacion - CONECTEA")
+    pdf.set_author("CONECTEA")
+
+    logo_path = os.path.join(app.root_path, "static", "images", "logo.png")
+    codigo = ""
+    if datos_personales:
+        codigo = datos_personales.get("codigo", "")
+
+    add_pdf_header(pdf, logo_path, codigo or "SIN-CODIGO")
+
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(95, 105, 118)
+    pdf.multi_cell(
+        0,
+        5,
+        pdf_safe(
+            "Documento generado a partir de la evaluacion completada en CONECTEA. "
+            "Presenta un resumen legible para consulta y seguimiento."
+        ),
+    )
+
+    if datos_personales:
+        add_pdf_section_title(pdf, "Datos del apoderado")
+        add_pdf_info_grid(
+            pdf,
+            [
+                ("Nombre del padre", datos_personales.get("nombre_padre", "-") or "-"),
+                ("Nombre de la madre", datos_personales.get("nombre_madre", "-") or "-"),
+                ("Paciente", datos_personales.get("nombre_paciente", "-") or "-"),
+                ("Distrito", datos_personales.get("distrito", "-") or "-"),
+                ("Telefono", datos_personales.get("telefono", "-") or "-"),
+                ("Correo", datos_personales.get("correo", "-") or "-"),
+            ],
+        )
+
+    if datos_nino:
+        add_pdf_section_title(pdf, "Datos del nino(a)")
+        add_pdf_info_grid(
+            pdf,
+            [
+                ("Sexo", datos_nino.get("sexo", "-") or "-"),
+                ("Edad", f"{datos_nino.get('edad', '-')} anos"),
+            ],
+        )
+
+    add_pdf_section_title(pdf, "Resumen del resultado")
+    pdf_date = generated_at or datetime.now()
+    pdf.set_fill_color(250, 247, 243)
+    pdf.set_draw_color(228, 222, 214)
+    y = pdf.get_y()
+    pdf.rect(pdf.l_margin, y, pdf.w - pdf.l_margin - pdf.r_margin, 23, style="DF")
+    pdf.set_xy(pdf.l_margin + 4, y + 4)
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_text_color(41, 51, 65)
+    pdf.cell(34, 8, pdf_safe(str(data_eval["score"])))
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(95, 105, 118)
+    pdf.cell(26, 8, pdf_safe("/ 40"))
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(80, 63, 49)
+    pdf.cell(0, 8, pdf_safe(data_eval["clase_predicha_texto"]), new_x="LMARGIN", new_y="NEXT")
+    pdf.set_x(pdf.l_margin + 4)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(31, 41, 55)
+    pdf.cell(0, 5, pdf_safe(f"Porcentaje: {round(data_eval['score_pct'], 1)}%  |  Fecha: {pdf_date.strftime('%Y-%m-%d %H:%M')}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(12)
+
+    add_pdf_section_title(pdf, "Probabilidades por nivel")
+    add_pdf_probabilities(pdf, data_eval.get("probabilidades", {}))
+
+    respuestas = datos_nino.get("respuestas", []) if datos_nino else []
+    if respuestas:
+        add_pdf_section_title(pdf, "Respuestas del cuestionario")
+        add_pdf_responses_table(pdf, respuestas)
+
+    pdf.ln(6)
+    pdf.set_font("Helvetica", "I", 9)
+    pdf.set_text_color(110, 110, 110)
+    pdf.multi_cell(
+        0,
+        5,
+        pdf_safe(
+            "Este reporte es una herramienta de apoyo y no reemplaza una evaluacion clinica profesional."
+        ),
+    )
+
+    raw_pdf = pdf.output(dest="S")
+    return raw_pdf.encode("latin-1") if isinstance(raw_pdf, str) else bytes(raw_pdf)
+
+
+def build_pdf_payload_from_evaluation(evaluation):
+    return {
+        "resultado": {
+            "score": float(evaluation["score"]),
+            "score_pct": float(evaluation["score_pct"]),
+            "clase_predicha_texto": evaluation["nivel_autismo"],
+            "probabilidades": evaluation.get("probabilidades", {}),
+        },
+        "datos_personales": {
+            "codigo": evaluation.get("codigo", ""),
+            "nombre_padre": evaluation.get("nombre_padre", ""),
+            "nombre_madre": evaluation.get("nombre_madre", ""),
+            "nombre_paciente": evaluation.get("nombre_paciente", ""),
+            "distrito": evaluation.get("distrito", ""),
+            "telefono": evaluation.get("telefono", ""),
+            "correo": evaluation.get("correo", ""),
+        },
+        "datos_nino": {
+            "sexo": evaluation.get("sexo", ""),
+            "edad": evaluation.get("edad", ""),
+            "respuestas": [item["valor"] for item in evaluation.get("respuestas", [])],
+        },
+        "generated_at": evaluation.get("created_at"),
+    }
+
+
 @app.route("/")
 def home():
-    return render_template("lobby.html")   # pagina de bienvenida
+    return render_template("lobby.html")
 
 
-# ---------------------------
-# REGISTRO DE DATOS PERSONALES
-# ---------------------------
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
         datos = {
-            "nombre_padre": request.form.get("nombre_padre", ""),
-            "nombre_madre": request.form.get("nombre_madre", ""),
-            "nombre_paciente": request.form.get("nombre_paciente", ""),
-            "distrito": request.form.get("distrito", ""),
-            "telefono": request.form.get("telefono", ""),
-            "correo": request.form.get("correo", ""),
+            "nombre_padre": request.form.get("nombre_padre", "").strip(),
+            "nombre_madre": request.form.get("nombre_madre", "").strip(),
+            "nombre_paciente": request.form.get("nombre_paciente", "").strip(),
+            "distrito": request.form.get("distrito", "").strip(),
+            "telefono": request.form.get("telefono", "").strip(),
+            "correo": request.form.get("correo", "").strip(),
         }
 
-        # 1) Guardar en la BD
-        try:
-            conn = get_connection()
-            cur = conn.cursor()
+        if not datos["nombre_paciente"] or not datos["distrito"] or not datos["telefono"] or not datos["correo"]:
+            return render_template(
+                "registro.html",
+                error="Completa todos los campos obligatorios antes de continuar.",
+            )
 
-            # Insertamos y recuperamos el id autoincremental
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
             cur.execute(
                 """
-                INSERT INTO registros_pacientes
-                  (nombre_padre, nombre_madre, nombre_paciente, distrito, telefono, correo)
+                INSERT INTO pacientes (
+                    nombre_padre,
+                    nombre_madre,
+                    nombre_paciente,
+                    distrito,
+                    telefono,
+                    correo
+                )
                 VALUES (%s, %s, %s, %s, %s, %s)
                 RETURNING id;
                 """,
@@ -91,51 +610,36 @@ def registro():
                     datos["correo"],
                 ),
             )
-            id_registro = cur.fetchone()[0]
-
-            # Generar código tipo CT-2025-00001
-            anio = datetime.now().year
-            codigo = f"CT-{anio}-{id_registro:05d}"
-
-            # Actualizar el registro con el código
+            paciente_id = cur.fetchone()[0]
+            codigo = f"CT-{datetime.now().year}-{paciente_id:05d}"
             cur.execute(
                 """
-                UPDATE registros_pacientes
+                UPDATE pacientes
                 SET codigo = %s
                 WHERE id = %s;
                 """,
-                (codigo, id_registro),
+                (codigo, paciente_id),
             )
-
             conn.commit()
-
         finally:
             cur.close()
             conn.close()
 
-        # 2) Guardar en sesion para usar luego
-        datos["id_registro"] = id_registro
-        datos["codigo"] = codigo   # lo usaremos luego para guardar las respuestas
+        datos["paciente_id"] = paciente_id
+        datos["codigo"] = codigo
         session["datos_personales"] = datos
-
-        # 3) Ir al formulario del test
         return redirect(url_for("formulario"))
 
-    # GET -> mostramos el formulario de datos personales
     return render_template("registro.html")
 
 
-# ---------------------------
-# FORMULARIO (40 PREGUNTAS)
-# ---------------------------
 @app.route("/formulario", methods=["GET"])
 def formulario():
-    return render_template("index.html")   # formulario de 40 preguntas
+    if "datos_personales" not in session:
+        return redirect(url_for("registro"))
+    return render_template("index.html")
 
 
-# ---------------------------
-# PROCESAR FORMULARIO
-# ---------------------------
 @app.route("/procesar", methods=["POST"])
 def procesar():
     try:
@@ -146,88 +650,88 @@ def procesar():
             raise ValueError("Debes ingresar sexo y edad.")
 
         edad = int(edad_str)
-
-        # Leer las 40 preguntas
         respuestas_q = []
-        for i in range(1, 41):
-            valor_str = request.form.get(f"Q{i}")
+        for index in range(1, 41):
+            valor_str = request.form.get(f"Q{index}")
             if valor_str is None or valor_str == "":
-                raise ValueError(f"Falta respuesta en la pregunta Q{i}.")
+                raise ValueError(f"Falta respuesta en la pregunta Q{index}.")
             respuestas_q.append(int(valor_str))
 
-        # Llamar al modelo
-        resultado_modelo = modelo.predecir_desde_cuestionario(sexo, edad, respuestas_q)
-
-        # Score bruto (0-40)
-        score = float(resultado_modelo["score"])
-        # Porcentaje (0–100) para la barrita
-        score_pct = score / 40 * 100
-
-        # ------------- ACTUALIZAR REGISTRO EN BD + GUARDAR RESPUESTAS -------------
         datos_pers = session.get("datos_personales")
-        if datos_pers and "id_registro" in datos_pers:
-            try:
-                conn = get_connection()
-                cur = conn.cursor()
+        if not datos_pers or "paciente_id" not in datos_pers:
+            raise ValueError("La sesion del paciente no esta disponible. Vuelve a iniciar el registro.")
 
-                # 1) Actualizar datos del registro principal
-                cur.execute(
-                    """
-                    UPDATE registros_pacientes
-                    SET sexo = %s,
-                        edad = %s,
-                        score = %s,
-                        nivel_autismo = %s
-                    WHERE id = %s;
-                    """,
-                    (
-                        sexo,
-                        edad,
-                        score,
-                        resultado_modelo["clase_predicha_texto"],
-                        datos_pers["id_registro"],
-                    ),
+        resultado_modelo = modelo.predecir_desde_cuestionario(sexo, edad, respuestas_q)
+        score = float(resultado_modelo["score"])
+        score_pct = score / 40 * 100
+        probabilidades = {k: float(v) for k, v in resultado_modelo["probabilidades"].items()}
+
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                UPDATE pacientes
+                SET sexo = %s,
+                    edad = %s
+                WHERE id = %s;
+                """,
+                (sexo, edad, datos_pers["paciente_id"]),
+            )
+
+            cur.execute(
+                """
+                INSERT INTO evaluaciones (
+                    paciente_id,
+                    score,
+                    score_pct,
+                    nivel_autismo,
+                    probabilidades_json
                 )
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id;
+                """,
+                (
+                    datos_pers["paciente_id"],
+                    score,
+                    score_pct,
+                    resultado_modelo["clase_predicha_texto"],
+                    json.dumps(probabilidades),
+                ),
+            )
+            evaluacion_id = cur.fetchone()[0]
 
-                # 2) Insertar respuestas del cuestionario ligadas al CODIGO
-                codigo = datos_pers.get("codigo")
-                if codigo:
-                    cur.execute(
-                        """
-                        INSERT INTO respuestas_cuestionario (
-                            codigo,
-                            q1, q2, q3, q4, q5, q6, q7, q8, q9, q10,
-                            q11, q12, q13, q14, q15, q16, q17, q18, q19, q20,
-                            q21, q22, q23, q24, q25, q26, q27, q28, q29, q30,
-                            q31, q32, q33, q34, q35, q36, q37, q38, q39, q40
-                        )
-                        VALUES (
-                            %s,
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                        );
-                        """,
-                        (codigo, *respuestas_q),
-                    )
+            cur.execute(
+                """
+                INSERT INTO respuestas_evaluacion (
+                    evaluacion_id,
+                    q1, q2, q3, q4, q5, q6, q7, q8, q9, q10,
+                    q11, q12, q13, q14, q15, q16, q17, q18, q19, q20,
+                    q21, q22, q23, q24, q25, q26, q27, q28, q29, q30,
+                    q31, q32, q33, q34, q35, q36, q37, q38, q39, q40
+                )
+                VALUES (
+                    %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                );
+                """,
+                (evaluacion_id, *respuestas_q),
+            )
+            conn.commit()
+        finally:
+            cur.close()
+            conn.close()
 
-                conn.commit()
-            finally:
-                cur.close()
-                conn.close()
-
-        # Guardamos el resultado en sesion
         session["resultado"] = {
+            "evaluacion_id": evaluacion_id,
             "score": score,
-            "score_pct": score_pct,  # para la flechita en la barra
+            "score_pct": score_pct,
             "clase_predicha_texto": resultado_modelo["clase_predicha_texto"],
-            "probabilidades": {
-                k: float(v) for k, v in resultado_modelo["probabilidades"].items()
-            },
+            "probabilidades": probabilidades,
         }
-
-        # Guardar datos del nino para mostrarlos y usarlos en el PDF
         session["datos_nino"] = {
             "sexo": sexo,
             "edad": edad,
@@ -236,138 +740,323 @@ def procesar():
 
         return redirect(url_for("resultado"))
 
-    except Exception as e:
-        # Si hay error, volvemos al formulario mostrando el mensaje
-        return render_template("index.html", error=str(e))
+    except Exception as exc:
+        return render_template("index.html", error=str(exc))
 
 
-# ---------------------------
-# PÁGINA DE RESULTADO
-# ---------------------------
 @app.route("/resultado", methods=["GET"])
 def resultado():
     data = session.get("resultado")
     if not data:
-        # Si no hay datos, manda al formulario de nuevo
         return redirect(url_for("formulario"))
-
-    # No hacemos pop para reutilizar en el PDF
-    datos_personales = session.get("datos_personales")
-    datos_nino = session.get("datos_nino")
 
     return render_template(
         "resultado.html",
         resultado=data,
-        datos_personales=datos_personales,
-        datos_nino=datos_nino,
+        datos_personales=session.get("datos_personales"),
+        datos_nino=session.get("datos_nino"),
     )
 
 
-# ---------------------------
-# DESCARGAR PDF
-# ---------------------------
 @app.route("/descargar_pdf", methods=["GET"])
 def descargar_pdf():
-    # Datos guardados en sesion
     data_eval = session.get("resultado")
     datos_personales = session.get("datos_personales")
     datos_nino = session.get("datos_nino")
 
-    # Si no hay datos de evaluacion, redirige al formulario
     if not data_eval:
         return redirect(url_for("formulario"))
 
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    # Titulo
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, "Reporte de Evaluacion - ConecTEA", ln=1, align="C")
-    pdf.ln(5)
-
-    # Datos del apoderado
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, "Datos del apoderado:", ln=1)
-
-    pdf.set_font("Arial", "", 11)
-    if datos_personales:
-        pdf.cell(0, 6, f"Nombre del padre: {datos_personales.get('nombre_padre', '')}", ln=1)
-        pdf.cell(0, 6, f"Nombre de la madre: {datos_personales.get('nombre_madre', '')}", ln=1)
-        pdf.cell(0, 6, f"Nombre del paciente: {datos_personales.get('nombre_paciente', '')}", ln=1)
-        pdf.cell(0, 6, f"Distrito: {datos_personales.get('distrito', '')}", ln=1)
-        pdf.cell(0, 6, f"Telefono: {datos_personales.get('telefono', '')}", ln=1)
-        pdf.cell(0, 6, f"Correo: {datos_personales.get('correo', '')}", ln=1)
-    else:
-        pdf.cell(0, 6, "No se registraron datos personales.", ln=1)
-
-    pdf.ln(5)
-
-    # Datos del nino(a)
-    if datos_nino:
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Datos del nino(a):", ln=1)
-
-        pdf.set_font("Arial", "", 11)
-        pdf.cell(0, 6, f"Sexo: {datos_nino.get('sexo', '')}", ln=1)
-        pdf.cell(0, 6, f"Edad: {datos_nino.get('edad', '')} anos", ln=1)
-        pdf.ln(5)
-
-    # Resultado principal
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, "Resultado de la prediccion:", ln=1)
-
-    pdf.set_font("Arial", "", 11)
-    pdf.cell(0, 6, f"Score total (0-40): {data_eval['score']}", ln=1)
-    pdf.cell(0, 6, f"Nivel de autismo: {data_eval['clase_predicha_texto']}", ln=1)
-    pdf.ln(4)
-
-    # Probabilidades
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, "Probabilidades:", ln=1)
-    pdf.set_font("Arial", "", 11)
-
-    for nivel, prob in data_eval["probabilidades"].items():
-        pdf.cell(0, 6, f"{nivel}: {round(prob, 3)}", ln=1)
-
-    # Tabla de respuestas Q1..Q40
-    respuestas = []
-    if datos_nino and "respuestas" in datos_nino:
-        respuestas = datos_nino["respuestas"]
-
-    if respuestas:
-        pdf.ln(6)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Respuestas al cuestionario:", ln=1)
-
-        # Encabezados
-        pdf.set_font("Arial", "B", 10)
-        pdf.cell(30, 6, "Pregunta", border=1)
-        pdf.cell(40, 6, "Respuesta", border=1, ln=1)
-
-        # Filas
-        pdf.set_font("Arial", "", 10)
-        for idx, valor in enumerate(respuestas, start=1):
-            pdf.cell(30, 6, f"Q{idx}", border=1)
-            pdf.cell(40, 6, "Si" if valor == 1 else "No", border=1, ln=1)
-
-    # Salida a bytes (compatible con todas las versiones)
-    raw_pdf = pdf.output(dest="S")
-    if isinstance(raw_pdf, str):
-        pdf_bytes = raw_pdf.encode("latin-1")
-    else:
-        pdf_bytes = bytes(raw_pdf)
+    pdf_bytes = build_pdf_document(data_eval, datos_personales, datos_nino, datetime.now())
 
     response = make_response(pdf_bytes)
     response.headers.set("Content-Type", "application/pdf")
-    response.headers.set(
-        "Content-Disposition", "attachment", filename="reporte_conectea.pdf"
-    )
+    response.headers.set("Content-Disposition", "attachment", filename="reporte_conectea.pdf")
     return response
 
 
-# ==========================
-# MAIN
-# ==========================
+@app.route("/evaluacion/<int:evaluacion_id>/pdf")
+@login_required("admin", "especialista")
+def download_evaluation_pdf(evaluacion_id):
+    evaluation = build_evaluation_detail(evaluacion_id)
+    if not evaluation:
+        flash("La evaluacion solicitada no existe.", "error")
+        return redirect(url_for("dashboard_redirect"))
+
+    payload = build_pdf_payload_from_evaluation(evaluation)
+    pdf_bytes = build_pdf_document(
+        payload["resultado"],
+        payload["datos_personales"],
+        payload["datos_nino"],
+        payload["generated_at"],
+    )
+
+    filename = f"reporte_{evaluation.get('codigo', evaluacion_id)}.pdf"
+    response = make_response(pdf_bytes)
+    response.headers.set("Content-Type", "application/pdf")
+    response.headers.set("Content-Disposition", "attachment", filename=filename)
+    return response
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if session.get("user_role"):
+        return redirect(url_for("dashboard_redirect"))
+
+    if request.method == "POST":
+        correo = request.form.get("correo", "").strip().lower()
+        password = request.form.get("password", "")
+
+        user = fetch_one(
+            """
+            SELECT id, nombre_completo, correo, password_hash, rol, activo
+            FROM usuarios
+            WHERE LOWER(correo) = %s;
+            """,
+            (correo,),
+        )
+
+        if not user or not user["activo"] or not check_password_hash(user["password_hash"], password):
+            return render_template(
+                "login.html",
+                error="Credenciales invalidas. Verifica tu correo y contrasena.",
+            )
+
+        session["user_id"] = user["id"]
+        session["user_role"] = user["rol"]
+        session["user_name"] = user["nombre_completo"]
+        flash("Sesion iniciada correctamente.", "success")
+        return redirect(url_for("dashboard_redirect"))
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    for key in ("user_id", "user_role", "user_name"):
+        session.pop(key, None)
+    flash("La sesion fue cerrada correctamente.", "success")
+    return redirect(url_for("login"))
+
+
+@app.route("/panel")
+@login_required("admin", "especialista")
+def dashboard_redirect():
+    return redirect(dashboard_for_role())
+
+
+@app.route("/admin/dashboard")
+@login_required("admin")
+def admin_dashboard():
+    specialists = fetch_all(
+        """
+        SELECT
+            u.id AS usuario_id,
+            u.nombre_completo,
+            u.correo,
+            u.activo,
+            e.especialidad,
+            e.numero_colegiatura,
+            e.id AS especialista_id
+        FROM usuarios u
+        INNER JOIN especialistas e ON e.usuario_id = u.id
+        WHERE u.rol = 'especialista'
+        ORDER BY u.created_at DESC;
+        """
+    )
+
+    recent_evaluations = fetch_all(
+        """
+        SELECT
+            ev.id,
+            ev.score,
+            ev.nivel_autismo,
+            ev.created_at,
+            p.codigo,
+            p.nombre_paciente,
+            p.distrito
+        FROM evaluaciones ev
+        INNER JOIN pacientes p ON p.id = ev.paciente_id
+        ORDER BY ev.created_at DESC
+        LIMIT 12;
+        """
+    )
+
+    stats = fetch_one(
+        """
+        SELECT
+            (SELECT COUNT(*) FROM usuarios WHERE rol = 'especialista') AS total_especialistas,
+            (SELECT COUNT(*) FROM pacientes) AS total_pacientes,
+            (SELECT COUNT(*) FROM evaluaciones) AS total_evaluaciones;
+        """
+    )
+
+    return render_template(
+        "admin_dashboard.html",
+        specialists=specialists,
+        recent_evaluations=recent_evaluations,
+        stats=stats or {},
+        admin_email=DEFAULT_ADMIN_EMAIL,
+    )
+
+
+@app.route("/admin/especialistas/nuevo", methods=["POST"])
+@login_required("admin")
+def create_specialist():
+    nombre = request.form.get("nombre_completo", "").strip()
+    correo = request.form.get("correo", "").strip().lower()
+    password = request.form.get("password", "").strip()
+    especialidad = request.form.get("especialidad", "").strip()
+    numero_colegiatura = request.form.get("numero_colegiatura", "").strip()
+
+    if not nombre or not correo or not password:
+        flash("Nombre, correo y contrasena son obligatorios para crear un especialista.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    existing_user = fetch_one("SELECT id FROM usuarios WHERE LOWER(correo) = %s;", (correo,))
+    if existing_user:
+        flash("Ya existe una cuenta registrada con ese correo.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO usuarios (nombre_completo, correo, password_hash, rol)
+            VALUES (%s, %s, %s, 'especialista')
+            RETURNING id;
+            """,
+            (nombre, correo, generate_password_hash(password)),
+        )
+        usuario_id = cur.fetchone()[0]
+
+        cur.execute(
+            """
+            INSERT INTO especialistas (usuario_id, especialidad, numero_colegiatura)
+            VALUES (%s, %s, %s);
+            """,
+            (usuario_id, especialidad or None, numero_colegiatura or None),
+        )
+        conn.commit()
+        flash("Especialista creado correctamente.", "success")
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/especialista/dashboard")
+@login_required("especialista")
+def specialist_dashboard():
+    query_text = request.args.get("q", "").strip()
+
+    if query_text:
+        evaluations = fetch_all(
+            """
+            SELECT
+                ev.id,
+                ev.score,
+                ev.nivel_autismo,
+                ev.created_at,
+                p.codigo,
+                p.nombre_paciente,
+                p.edad,
+                p.distrito
+            FROM evaluaciones ev
+            INNER JOIN pacientes p ON p.id = ev.paciente_id
+            WHERE
+                p.codigo ILIKE %s OR
+                p.nombre_paciente ILIKE %s OR
+                COALESCE(p.distrito, '') ILIKE %s
+            ORDER BY ev.created_at DESC;
+            """,
+            tuple([f"%{query_text}%"] * 3),
+        )
+    else:
+        evaluations = fetch_all(
+            """
+            SELECT
+                ev.id,
+                ev.score,
+                ev.nivel_autismo,
+                ev.created_at,
+                p.codigo,
+                p.nombre_paciente,
+                p.edad,
+                p.distrito
+            FROM evaluaciones ev
+            INNER JOIN pacientes p ON p.id = ev.paciente_id
+            ORDER BY ev.created_at DESC
+            LIMIT 40;
+            """
+        )
+
+    stats = fetch_one(
+        """
+        SELECT
+            COUNT(*) AS total_evaluaciones,
+            COUNT(DISTINCT paciente_id) AS total_pacientes,
+            ROUND(AVG(score), 2) AS score_promedio
+        FROM evaluaciones;
+        """
+    )
+
+    return render_template(
+        "specialist_dashboard.html",
+        evaluations=evaluations,
+        stats=stats or {},
+        query_text=query_text,
+    )
+
+
+@app.route("/evaluacion/<int:evaluacion_id>")
+@login_required("admin", "especialista")
+def evaluation_detail(evaluacion_id):
+    evaluation = build_evaluation_detail(evaluacion_id)
+    if not evaluation:
+        flash("La evaluacion solicitada no existe.", "error")
+        return redirect(url_for("dashboard_redirect"))
+
+    return render_template(
+        "evaluation_detail.html",
+        evaluation=evaluation,
+        can_add_notes=session.get("user_role") == "especialista",
+    )
+
+
+@app.route("/evaluacion/<int:evaluacion_id>/nota", methods=["POST"])
+@login_required("especialista")
+def add_note(evaluacion_id):
+    note = request.form.get("nota", "").strip()
+    if not note:
+        flash("Escribe una nota antes de guardarla.", "error")
+        return redirect(url_for("evaluation_detail", evaluacion_id=evaluacion_id))
+
+    specialist = get_specialist_by_user_id(session.get("user_id"))
+    if not specialist:
+        flash("No se encontro el perfil del especialista autenticado.", "error")
+        return redirect(url_for("specialist_dashboard"))
+
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO notas_especialista (evaluacion_id, especialista_id, nota)
+            VALUES (%s, %s, %s);
+            """,
+            (evaluacion_id, specialist["id"], note),
+        )
+        conn.commit()
+        flash("Nota guardada correctamente.", "success")
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect(url_for("evaluation_detail", evaluacion_id=evaluacion_id))
+
+
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingreso de especialistas - CONECTEA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page-shell">
+        <section class="auth-shell fade-in-up">
+            <article class="auth-card panel">
+                <div class="brand-lockup">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" class="form-logo" alt="CONECTEA">
+                    <div class="brand-copy">
+                        <span class="eyebrow">Acceso privado</span>
+                        <h1 class="page-title">Panel profesional</h1>
+                    </div>
+                </div>
+
+                <p class="page-subtitle">
+                    Esta entrada esta reservada para administradores y especialistas autorizados.
+                </p>
+
+                {% if error %}
+                    <div class="error">{{ error }}</div>
+                {% endif %}
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-stack">
+                            {% for category, message in messages %}
+                                <div class="{{ 'resultado' if category == 'success' else 'error' }}">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('login') }}" class="auth-form">
+                    <div class="field-group">
+                        <label for="correo" class="field-label">Correo</label>
+                        <input type="email" id="correo" name="correo" class="form-input" required>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="password" class="field-label">Contrasena</label>
+                        <input type="password" id="password" name="password" class="form-input" required>
+                    </div>
+
+                    <div class="hero-actions">
+                        <button type="submit" class="submit-btn">Ingresar</button>
+                        <a href="{{ url_for('home') }}" class="submit-btn submit-btn-secondary">Volver al inicio</a>
+                    </div>
+                </form>
+            </article>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/resultado.js') }}"></script>
+</body>
+</html>

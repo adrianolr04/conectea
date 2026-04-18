@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle de Evaluacion - CONECTEA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="container fade-in-up">
+        <div class="app-topbar">
+            <div class="brand-lockup">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" class="form-logo" alt="CONECTEA">
+                <div class="brand-copy">
+                    <span class="eyebrow">Detalle clinico</span>
+                    <h1 class="page-title">Evaluacion {{ evaluation.codigo }}</h1>
+                </div>
+            </div>
+
+            <div class="hero-actions">
+                <a href="{{ url_for('download_evaluation_pdf', evaluacion_id=evaluation.id) }}" class="submit-btn">Descargar PDF</a>
+                <a href="{{ url_for('dashboard_redirect') }}" class="submit-btn submit-btn-secondary">Volver al panel</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="{{ 'resultado' if category == 'success' else 'error' }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <section class="result-layout">
+            <aside class="sticky-column">
+                <article class="summary-card">
+                    <h3>Paciente</h3>
+                    <div class="patient-list">
+                        <div class="patient-item">
+                            <strong>Nombre</strong>
+                            <span>{{ evaluation.nombre_paciente }}</span>
+                        </div>
+                        <div class="patient-item">
+                            <strong>Codigo</strong>
+                            <span>{{ evaluation.codigo }}</span>
+                        </div>
+                        <div class="patient-item">
+                            <strong>Edad</strong>
+                            <span>{{ evaluation.edad or '-' }}</span>
+                        </div>
+                        <div class="patient-item">
+                            <strong>Sexo</strong>
+                            <span>{{ evaluation.sexo or '-' }}</span>
+                        </div>
+                        <div class="patient-item">
+                            <strong>Distrito</strong>
+                            <span>{{ evaluation.distrito or '-' }}</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="summary-card">
+                    <h3>Familia y contacto</h3>
+                    <div class="patient-list">
+                        <div class="patient-item">
+                            <strong>Padre</strong>
+                            <span>{{ evaluation.nombre_padre or '-' }}</span>
+                        </div>
+                        <div class="patient-item">
+                            <strong>Madre</strong>
+                            <span>{{ evaluation.nombre_madre or '-' }}</span>
+                        </div>
+                        <div class="patient-item">
+                            <strong>Telefono</strong>
+                            <span>{{ evaluation.telefono or '-' }}</span>
+                        </div>
+                        <div class="patient-item">
+                            <strong>Correo</strong>
+                            <span>{{ evaluation.correo or '-' }}</span>
+                        </div>
+                    </div>
+                </article>
+            </aside>
+
+            <section class="form-card">
+                <article class="result-block">
+                    <div class="result-grid">
+                        <div>
+                            <div class="score-value">
+                                <span class="eyebrow">Resultado</span>
+                                <strong>{{ evaluation.score }}</strong>
+                                <span class="score-badge">{{ evaluation.nivel_autismo }}</span>
+                            </div>
+                            <p class="result-note">Fecha de evaluacion: {{ evaluation.created_at.strftime('%Y-%m-%d %H:%M') if evaluation.created_at else '-' }}</p>
+                        </div>
+
+                        <div>
+                            <h3>Probabilidades</h3>
+                            <ul class="probability-list">
+                                {% for nivel, valor in evaluation.probabilidades.items() %}
+                                    <li>
+                                        <span>{{ nivel }}</span>
+                                        <span>{{ valor | round(3) }}</span>
+                                    </li>
+                                {% else %}
+                                    <li>
+                                        <span>Sin datos</span>
+                                        <span>-</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </article>
+
+                {% if can_add_notes %}
+                    <article class="result-block">
+                        <div class="section-heading">
+                            <h2>Agregar nota profesional</h2>
+                            <p>Usa este espacio para dejar seguimiento clinico u observaciones internas.</p>
+                        </div>
+
+                        <form method="POST" action="{{ url_for('add_note', evaluacion_id=evaluation.id) }}">
+                            <div class="field-group">
+                                <label for="nota" class="field-label">Nota</label>
+                                <textarea id="nota" name="nota" class="form-input textarea-input" required></textarea>
+                            </div>
+                            <div class="hero-actions" style="margin-top: 20px;">
+                                <button type="submit" class="submit-btn">Guardar nota</button>
+                            </div>
+                        </form>
+                    </article>
+                {% endif %}
+
+                <article class="result-block">
+                    <div class="section-heading">
+                        <h2>Notas registradas</h2>
+                        <p>Historial de anotaciones hechas desde el panel de especialistas.</p>
+                    </div>
+
+                    <div class="notes-list">
+                        {% for note in evaluation.notas %}
+                            <div class="note-card">
+                                <strong>{{ note.especialista_nombre }}</strong>
+                                <span>{{ note.created_at.strftime('%Y-%m-%d %H:%M') if note.created_at else '-' }}</span>
+                                <p>{{ note.nota }}</p>
+                            </div>
+                        {% else %}
+                            <div class="note-card">
+                                <strong>Sin notas aun</strong>
+                                <p>Todavia no se han registrado observaciones profesionales para esta evaluacion.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </article>
+
+                <article class="result-block">
+                    <div class="section-heading">
+                        <h2>Respuestas del cuestionario</h2>
+                        <p>Resumen de las 40 respuestas registradas en esta evaluacion.</p>
+                    </div>
+
+                    <div class="answers-grid">
+                        {% for answer in evaluation.respuestas %}
+                            <div class="answer-pill">
+                                <strong>Q{{ answer.numero }}</strong>
+                                <span>{{ 'Si' if answer.valor == 1 else 'No' }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </article>
+            </section>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/resultado.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - CONECTEA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="container fade-in-up">
+        <div class="app-topbar">
+            <div class="brand-lockup">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" class="form-logo" alt="CONECTEA">
+                <div class="brand-copy">
+                    <span class="eyebrow">Administrador</span>
+                    <h1 class="page-title">Gestion de especialistas</h1>
+                </div>
+            </div>
+
+            <div class="hero-actions">
+                <a href="{{ url_for('logout') }}" class="submit-btn submit-btn-secondary">Cerrar sesion</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="{{ 'resultado' if category == 'success' else 'error' }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <section class="dashboard-grid">
+            <aside class="sticky-column">
+                <article class="summary-card">
+                    <h3>Resumen general</h3>
+                    <div class="stats-row stats-row-single">
+                        <div class="stat-pill">
+                            <strong>{{ stats.total_especialistas or 0 }}</strong>
+                            <span>Especialistas activos</span>
+                        </div>
+                        <div class="stat-pill">
+                            <strong>{{ stats.total_pacientes or 0 }}</strong>
+                            <span>Pacientes registrados</span>
+                        </div>
+                        <div class="stat-pill">
+                            <strong>{{ stats.total_evaluaciones or 0 }}</strong>
+                            <span>Evaluaciones creadas</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="summary-card">
+                    <h3>Admin por defecto</h3>
+                    <p>Si no cambiaste variables de entorno, el correo inicial es <strong>{{ admin_email }}</strong>.</p>
+                </article>
+            </aside>
+
+            <section class="form-card">
+                <article class="result-block">
+                    <div class="section-heading">
+                        <h2>Crear cuenta de especialista</h2>
+                        <p>Desde aqui puedes generar nuevas credenciales para el equipo profesional.</p>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('create_specialist') }}">
+                        <div class="form-grid">
+                            <div class="field-group">
+                                <label for="nombre_completo" class="field-label">Nombre completo</label>
+                                <input type="text" id="nombre_completo" name="nombre_completo" class="form-input" required>
+                            </div>
+
+                            <div class="field-group">
+                                <label for="correo" class="field-label">Correo</label>
+                                <input type="email" id="correo" name="correo" class="form-input" required>
+                            </div>
+
+                            <div class="field-group">
+                                <label for="password" class="field-label">Contrasena temporal</label>
+                                <input type="text" id="password" name="password" class="form-input" required>
+                            </div>
+
+                            <div class="field-group">
+                                <label for="especialidad" class="field-label">Especialidad</label>
+                                <input type="text" id="especialidad" name="especialidad" class="form-input">
+                            </div>
+
+                            <div class="field-group field-group--full">
+                                <label for="numero_colegiatura" class="field-label">Numero de colegiatura</label>
+                                <input type="text" id="numero_colegiatura" name="numero_colegiatura" class="form-input">
+                            </div>
+                        </div>
+
+                        <div class="hero-actions" style="margin-top: 24px;">
+                            <button type="submit" class="submit-btn">Crear especialista</button>
+                        </div>
+                    </form>
+                </article>
+
+                <article class="result-block">
+                    <div class="section-heading">
+                        <h2>Especialistas registrados</h2>
+                        <p>Listado de cuentas disponibles para ingresar al panel.</p>
+                    </div>
+
+                    <div class="table-shell">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Correo</th>
+                                    <th>Especialidad</th>
+                                    <th>Colegiatura</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for specialist in specialists %}
+                                    <tr>
+                                        <td>{{ specialist.nombre_completo }}</td>
+                                        <td>{{ specialist.correo }}</td>
+                                        <td>{{ specialist.especialidad or '-' }}</td>
+                                        <td>{{ specialist.numero_colegiatura or '-' }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4">Todavia no hay especialistas registrados.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="result-block">
+                    <div class="section-heading">
+                        <h2>Evaluaciones recientes</h2>
+                        <p>Acceso rapido a los casos generados desde el flujo publico.</p>
+                    </div>
+
+                    <div class="table-shell">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Codigo</th>
+                                    <th>Paciente</th>
+                                    <th>Distrito</th>
+                                    <th>Nivel</th>
+                                    <th>Detalle</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in recent_evaluations %}
+                                    <tr>
+                                        <td>{{ item.codigo }}</td>
+                                        <td>{{ item.nombre_paciente }}</td>
+                                        <td>{{ item.distrito or '-' }}</td>
+                                        <td>{{ item.nivel_autismo }}</td>
+                                        <td><a href="{{ url_for('evaluation_detail', evaluacion_id=item.id) }}" class="table-link">Ver</a></td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5">Todavia no hay evaluaciones registradas.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/resultado.js') }}"></script>
+</body>
+</html>

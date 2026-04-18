@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Especialista - CONECTEA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="container fade-in-up">
+        <div class="app-topbar">
+            <div class="brand-lockup">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" class="form-logo" alt="CONECTEA">
+                <div class="brand-copy">
+                    <span class="eyebrow">Especialista</span>
+                    <h1 class="page-title">Resultados y seguimiento</h1>
+                </div>
+            </div>
+
+            <div class="hero-actions">
+                <a href="{{ url_for('logout') }}" class="submit-btn submit-btn-secondary">Cerrar sesion</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="{{ 'resultado' if category == 'success' else 'error' }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <section class="dashboard-grid">
+            <aside class="sticky-column">
+                <article class="summary-card">
+                    <h3>Vista rapida</h3>
+                    <div class="stats-row stats-row-single">
+                        <div class="stat-pill">
+                            <strong>{{ stats.total_evaluaciones or 0 }}</strong>
+                            <span>Evaluaciones disponibles</span>
+                        </div>
+                        <div class="stat-pill">
+                            <strong>{{ stats.total_pacientes or 0 }}</strong>
+                            <span>Pacientes unicos</span>
+                        </div>
+                        <div class="stat-pill">
+                            <strong>{{ stats.score_promedio or 0 }}</strong>
+                            <span>Score promedio</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="summary-card">
+                    <h3>Busqueda</h3>
+                    <p>Busca por codigo, nombre del paciente o distrito para encontrar un caso mas rapido.</p>
+                </article>
+            </aside>
+
+            <section class="form-card">
+                <article class="result-block">
+                    <form method="GET" action="{{ url_for('specialist_dashboard') }}">
+                        <div class="search-row">
+                            <input type="text" name="q" value="{{ query_text }}" class="form-input" placeholder="Buscar por codigo, paciente o distrito">
+                            <button type="submit" class="submit-btn">Buscar</button>
+                        </div>
+                    </form>
+                </article>
+
+                <article class="result-block">
+                    <div class="section-heading">
+                        <h2>Evaluaciones registradas</h2>
+                        <p>Selecciona una evaluacion para revisar datos, respuestas y notas.</p>
+                    </div>
+
+                    <div class="table-shell">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Codigo</th>
+                                    <th>Paciente</th>
+                                    <th>Edad</th>
+                                    <th>Distrito</th>
+                                    <th>Nivel</th>
+                                    <th>Score</th>
+                                    <th>Detalle</th>
+                                    <th>PDF</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in evaluations %}
+                                    <tr>
+                                        <td>{{ item.codigo }}</td>
+                                        <td>{{ item.nombre_paciente }}</td>
+                                        <td>{{ item.edad or '-' }}</td>
+                                        <td>{{ item.distrito or '-' }}</td>
+                                        <td>{{ item.nivel_autismo }}</td>
+                                        <td>{{ item.score }}</td>
+                                        <td><a href="{{ url_for('evaluation_detail', evaluacion_id=item.id) }}" class="table-link">Abrir</a></td>
+                                        <td><a href="{{ url_for('download_evaluation_pdf', evaluacion_id=item.id) }}" class="table-link">Descargar</a></td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td colspan="8">No se encontraron evaluaciones con ese criterio.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/resultado.js') }}"></script>
+</body>
+</html>
