@@ -7,25 +7,69 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <main class="page-shell">
+        <div class="home-wrapper fade-in-up">
+            <div class="app-topbar">
+                <div class="brand-lockup">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="CONECTEA" class="home-logo">
+                    <div class="brand-copy">
+                        <span class="eyebrow">Evaluación orientativa</span>
+                        <strong>CONECTEA</strong>
+                    </div>
+                </div>
+            </div>
 
-    <!-- Contenedor general del home -->
-    <div class="home-wrapper">
+            <section class="hero-grid">
+                <article class="hero-card panel">
+                    <div class="hero-copy">
+                        <span class="eyebrow">Acompañamiento para familias</span>
+                        <h1>Una experiencia más clara, cálida y sencilla para iniciar la evaluación.</h1>
+                        <p>
+                            CONECTEA organiza el registro, el cuestionario y el resultado preliminar en un flujo
+                            amigable para madres, padres y cuidadores. Todo el proceso se puede completar en pocos pasos.
+                        </p>
 
-        <!-- Logo centrado arriba -->
-        <img src="{{ url_for('static', filename='images/logo.png') }}"
-             alt="CONECTEA"
-             class="home-logo">
+                        <div class="stats-row">
+                            <div class="stat-pill">
+                                <strong>3 pasos</strong>
+                                <span>Registro, cuestionario y reporte final.</span>
+                            </div>
+                            <div class="stat-pill">
+                                <strong>40 preguntas</strong>
+                                <span>Formato guiado para responder con calma.</span>
+                            </div>
+                            <div class="stat-pill">
+                                <strong>PDF final</strong>
+                                <span>Descarga rápida del resultado generado.</span>
+                            </div>
+                        </div>
 
-        <!-- Tarjeta blanca con el mensaje -->
-        <div class="lobby-container">
-            <h1>¡Bienvenido!</h1>
-            <p>Herramienta de apoyo para padres: Para comenzar con la evaluación y recibir un diagnóstico preliminar, por favor presiona el botón a continuación.</p>
-            <button onclick="window.location.href='/registro'" class="submit-btn">
-                Iniciar Evaluación
-            </button>
+                        <div class="hero-actions">
+                            <a href="{{ url_for('registro') }}" class="submit-btn">Iniciar evaluación</a>
+                            <a href="#como-funciona" class="submit-btn submit-btn-secondary">Ver el proceso</a>
+                        </div>
+                    </div>
+                </article>
+
+                <aside class="hero-aside panel" id="como-funciona">
+                    <h2>Cómo funciona</h2>
+                    <ul class="feature-list">
+                        <li>Registras los datos del apoderado y del paciente.</li>
+                        <li>Respondes el cuestionario en una interfaz ordenada y responsiva.</li>
+                        <li>Obtienes un resultado preliminar con score, nivel y probabilidades.</li>
+                    </ul>
+
+                    <div class="support-card">
+                        <h3>Importante</h3>
+                        <p>
+                            Esta herramienta es de apoyo y no reemplaza una evaluación clínica profesional.
+                        </p>
+                    </div>
+                </aside>
+            </section>
         </div>
+    </main>
 
-    </div>
-
+    <script src="{{ url_for('static', filename='js/resultado.js') }}"></script>
 </body>
 </html>

@@ -7,78 +7,91 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <!-- Logo igual que en el formulario -->
-        <img src="{{ url_for('static', filename='images/logo.png') }}"
-             class="form-logo"
-             alt="CONECTEA">
-
-        <h2 style="text-align:center; margin-bottom: 20px;">
-            Registro de Datos
-        </h2>
-
-        {% if error %}
-            <div class="error">{{ error }}</div>
-        {% endif %}
-
-        <form method="POST" action="{{ url_for('registro') }}">
-
-            <div class="form-row">
-                <label for="nombre_padre" class="form-label">Nombre del padre:</label>
-                <input type="text"
-                       id="nombre_padre"
-                       name="nombre_padre"
-                       class="form-input">
+    <main class="container fade-in-up">
+        <div class="app-topbar">
+            <div class="brand-lockup">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" class="form-logo" alt="CONECTEA">
+                <div class="brand-copy">
+                    <span class="eyebrow">Paso 1 de 3</span>
+                    <h1 class="page-title">Registro de datos</h1>
+                </div>
             </div>
+        </div>
 
-            <div class="form-row">
-                <label for="nombre_madre" class="form-label">Nombre de la madre:</label>
-                <input type="text"
-                       id="nombre_madre"
-                       name="nombre_madre"
-                       class="form-input">
-            </div>
+        <section class="form-layout">
+            <aside class="sticky-column">
+                <div class="intro-card">
+                    <div class="form-intro">
+                        <span class="eyebrow">Información inicial</span>
+                        <p>
+                            Completa los datos del apoderado y del paciente para iniciar la evaluación.
+                            Solo te pediremos lo necesario para continuar con el cuestionario.
+                        </p>
+                    </div>
+                </div>
 
-            <div class="form-row">
-                <label for="nombre_paciente" class="form-label">Nombre del paciente:</label>
-                <input type="text"
-                       id="nombre_paciente"
-                       name="nombre_paciente"
-                       class="form-input"
-                       required>
-            </div>
+                <div class="summary-card">
+                    <h3>Antes de continuar</h3>
+                    <ul class="check-list">
+                        <li>Verifica que el correo y el teléfono estén bien escritos.</li>
+                        <li>El nombre del paciente y el distrito son obligatorios.</li>
+                        <li>Luego pasarás directamente al cuestionario.</li>
+                    </ul>
+                </div>
+            </aside>
 
-            <div class="form-row">
-                <label for="distrito" class="form-label">Distrito:</label>
-                <input type="text"
-                       id="distrito"
-                       name="distrito"
-                       class="form-input"
-                       required>
-            </div>
+            <section class="form-card">
+                <div class="section-heading">
+                    <h2>Datos del apoderado</h2>
+                    <p>Un formulario limpio y rápido para comenzar sin distracciones.</p>
+                </div>
 
-            <div class="form-row">
-                <label for="telefono" class="form-label">Número telefónico:</label>
-                <input type="tel"
-                       id="telefono"
-                       name="telefono"
-                       class="form-input"
-                       required>
-            </div>
+                {% if error %}
+                    <div class="error">{{ error }}</div>
+                {% endif %}
 
-            <div class="form-row">
-                <label for="correo" class="form-label">Correo electrónico:</label>
-                <input type="email"
-                       id="correo"
-                       name="correo"
-                       class="form-input"
-                       required>
-            </div>
+                <form method="POST" action="{{ url_for('registro') }}">
+                    <div class="form-grid">
+                        <div class="field-group">
+                            <label for="nombre_padre" class="field-label">Nombre del padre</label>
+                            <input type="text" id="nombre_padre" name="nombre_padre" class="form-input">
+                        </div>
 
-            <button type="submit" class="submit-btn submit-btn-small">
-                Continuar al Cuestionario
-            </button>
-        </form>
-    </div>
+                        <div class="field-group">
+                            <label for="nombre_madre" class="field-label">Nombre de la madre</label>
+                            <input type="text" id="nombre_madre" name="nombre_madre" class="form-input">
+                        </div>
+
+                        <div class="field-group field-group--full">
+                            <label for="nombre_paciente" class="field-label">Nombre del paciente</label>
+                            <input type="text" id="nombre_paciente" name="nombre_paciente" class="form-input" required>
+                        </div>
+
+                        <div class="field-group">
+                            <label for="distrito" class="field-label">Distrito</label>
+                            <input type="text" id="distrito" name="distrito" class="form-input" required>
+                        </div>
+
+                        <div class="field-group">
+                            <label for="telefono" class="field-label">Número telefónico</label>
+                            <input type="tel" id="telefono" name="telefono" class="form-input" required>
+                        </div>
+
+                        <div class="field-group field-group--full">
+                            <label for="correo" class="field-label">Correo electrónico</label>
+                            <input type="email" id="correo" name="correo" class="form-input" required>
+                        </div>
+                    </div>
+
+                    <div class="hero-actions" style="margin-top: 24px;">
+                        <button type="submit" class="submit-btn submit-btn-small">Continuar al cuestionario</button>
+                        <a href="{{ url_for('home') }}" class="submit-btn submit-btn-secondary">Volver al inicio</a>
+                    </div>
+                </form>
+            </section>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/resultado.js') }}"></script>
 </body>
 </html>

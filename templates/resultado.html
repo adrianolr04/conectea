@@ -6,80 +6,117 @@
     <title>Resultado de la Predicción</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body
     data-score="{{ resultado['score'] }}"
     data-scorepct="{{ resultado['score_pct'] }}"
     data-nivel="{{ resultado['clase_predicha_texto'] }}"
 >
-    <div class="container">
+    <main class="container fade-in-up">
+        <div class="app-topbar">
+            <div class="brand-lockup">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" class="form-logo" alt="CONECTEA">
+                <div class="brand-copy">
+                    <span class="eyebrow">Paso 3 de 3</span>
+                    <h1 class="page-title">Resultado preliminar</h1>
+                </div>
+            </div>
+        </div>
 
-        <!-- Logo arriba, igual que en el formulario -->
-        <img src="{{ url_for('static', filename='images/logo.png') }}"
-             class="form-logo"
-             alt="CONECTEA">
+        <section class="result-layout">
+            <aside class="sticky-column">
+                <div class="summary-card">
+                    <div class="result-header">
+                        <span class="eyebrow">Resumen del paciente</span>
+                        <p class="result-intro">Aquí tienes una vista más clara del score, el nivel estimado y la información principal registrada.</p>
+                    </div>
 
-        <div class="resultado card-resultado">
-            <h2>Resultado de la Predicción</h2>
+                    <div class="patient-list">
+                        {% if datos_personales and datos_personales.nombre_paciente %}
+                            <div class="patient-item">
+                                <strong>Paciente</strong>
+                                <span>{{ datos_personales.nombre_paciente }}</span>
+                            </div>
+                        {% endif %}
 
-            {% if datos_personales and datos_personales.nombre_paciente %}
-                <p><strong>Nombre del paciente:</strong> {{ datos_personales.nombre_paciente }}</p>
-            {% endif %}
-
-            <p><strong>Score total (0-40):</strong> {{ resultado['score'] }}</p>
-            <p><strong>Nivel de autismo:</strong> {{ resultado['clase_predicha_texto'] }}</p>
-
-            <!-- BARRA VISUAL DEL SCORE -->
-            <div class="score-widget">
-
-                <div id="scoreBar" class="score-bar">
-                    <div id="scoreFill" class="score-fill"></div>
-            
-                    <!-- Marcador -->
-                    <div id="scoreMarker"
-                         class="score-marker"
-                         style="left: {{ resultado['score_pct'] | round(1) }}%;">
+                        {% if datos_nino %}
+                            <div class="patient-item">
+                                <strong>Sexo</strong>
+                                <span>{{ datos_nino.sexo }}</span>
+                            </div>
+                            <div class="patient-item">
+                                <strong>Edad</strong>
+                                <span>{{ datos_nino.edad }} años</span>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
-            
-                <div class="score-scale">
-                    <span>0</span>
-                    <span>10</span>
-                    <span>20</span>
-                    <span>30</span>
-                    <span>40</span>
+
+                <div class="support-card">
+                    <h3>Siguiente paso sugerido</h3>
+                    <p>Usa este resultado como orientación inicial y compártelo con un especialista si necesitas una evaluación más completa.</p>
                 </div>
-            
-                <div class="score-legend">
-                    <span class="legend sin">Más bajo</span>
-                    <span class="legend leve">Leve</span>
-                    <span class="legend moderado">Moderado</span>
-                    <span class="legend severo">Más alto</span>
+            </aside>
+
+            <section class="form-card">
+                <div class="result-grid">
+                    <article class="result-block card-resultado">
+                        <div class="score-value">
+                            <span class="eyebrow">Score total</span>
+                            <strong>{{ resultado['score'] }}</strong>
+                            <span class="score-badge" id="scoreBadge">{{ resultado['clase_predicha_texto'] }}</span>
+                        </div>
+
+                        <div class="score-widget">
+                            <div id="scoreBar" class="score-bar">
+                                <div id="scoreFill" class="score-fill"></div>
+                                <div id="scoreMarker" class="score-marker" style="left: {{ resultado['score_pct'] | round(1) }}%;"></div>
+                            </div>
+                            <div class="score-scale">
+                                <span>0</span>
+                                <span>10</span>
+                                <span>20</span>
+                                <span>30</span>
+                                <span>40</span>
+                            </div>
+                            <div class="score-legend">
+                                <span class="legend sin">Más bajo</span>
+                                <span class="legend leve">Leve</span>
+                                <span class="legend moderado">Moderado</span>
+                                <span class="legend severo">Más alto</span>
+                            </div>
+                        </div>
+
+                        <p class="result-note">
+                            El marcador ubica visualmente el score obtenido dentro de la escala general del cuestionario.
+                        </p>
+                    </article>
+
+                    <article class="result-block">
+                        <h3>Probabilidades</h3>
+                        <ul class="probability-list">
+                            {% for nivel, probabilidad in resultado['probabilidades'].items() %}
+                                <li>
+                                    <span>{{ nivel }}</span>
+                                    <span>{{ probabilidad | round(3) }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </article>
                 </div>
-            </div>            
-            <!-- FIN BARRA -->
 
-            <p><strong>Probabilidades:</strong></p>
-            <ul>
-                {% for nivel, probabilidad in resultado['probabilidades'].items() %}
-                    <li>{{ nivel }}: {{ probabilidad | round(3) }}</li>
-                {% endfor %}
-            </ul>
+                <article class="result-block">
+                    <h3>Acciones disponibles</h3>
+                    <p>Puedes iniciar una nueva evaluación o descargar el reporte en PDF con la información registrada.</p>
 
-            <!-- Botones -->
-            <div class="button-wrapper">
-                <a href="{{ url_for('registro') }}" class="submit-btn">
-                    Iniciar otra Evaluación
-                </a>
-                <a href="{{ url_for('descargar_pdf') }}" class="submit-btn pdf-btn">
-                    Descargar PDF
-                </a>
-            </div>
+                    <div class="button-wrapper" style="margin-top: 18px;">
+                        <a href="{{ url_for('registro') }}" class="submit-btn">Iniciar otra evaluación</a>
+                        <a href="{{ url_for('descargar_pdf') }}" class="submit-btn pdf-btn">Descargar PDF</a>
+                    </div>
+                </article>
+            </section>
+        </section>
+    </main>
 
-        </div>
-    </div>
-
-    <!-- JS para animaciones y colores -->
     <script src="{{ url_for('static', filename='js/resultado.js') }}"></script>
 </body>
 </html>
