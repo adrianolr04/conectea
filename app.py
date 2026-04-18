@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime
 from functools import wraps
+from urllib.parse import urlparse
 
 import psycopg2
 from fpdf import FPDF
@@ -23,23 +24,50 @@ from miterap_model import MiterapModel
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_secret_key")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
+DATABASE_URL = os.getenv("DATABASE_URL")
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_NAME = os.getenv("DB_NAME", "CONECTEA")
 DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "adriano13")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 DB_PORT = int(os.getenv("DB_PORT", 5432))
 
 DEFAULT_ADMIN_NAME = os.getenv("ADMIN_NAME", "Administrador")
-DEFAULT_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@conectea.local")
-DEFAULT_ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+DEFAULT_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
+DEFAULT_ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 SCHEMA_READY = False
 
 modelo = MiterapModel(artifacts_dir="artifacts")
 
 
+def is_truthy(value):
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+app.config["SESSION_COOKIE_SECURE"] = not is_truthy(os.getenv("FLASK_DEBUG", "false"))
+
+
 def get_connection():
+    if DATABASE_URL:
+        normalized_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        parsed = urlparse(normalized_url)
+        connect_kwargs = {
+            "host": parsed.hostname,
+            "dbname": parsed.path.lstrip("/"),
+            "user": parsed.username,
+            "password": parsed.password,
+            "port": parsed.port or 5432,
+        }
+
+        ssl_mode = os.getenv("DB_SSLMODE")
+        if ssl_mode:
+            connect_kwargs["sslmode"] = ssl_mode
+
+        return psycopg2.connect(**connect_kwargs)
+
     return psycopg2.connect(
         host=DB_HOST,
         dbname=DB_NAME,
@@ -127,6 +155,10 @@ def ensure_schema():
         cur.execute("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1;")
         admin = cur.fetchone()
         if not admin:
+            if not DEFAULT_ADMIN_EMAIL or not DEFAULT_ADMIN_PASSWORD:
+                raise RuntimeError(
+                    "Configura ADMIN_EMAIL y ADMIN_PASSWORD para crear el usuario administrador inicial."
+                )
             cur.execute(
                 """
                 INSERT INTO usuarios (nombre_completo, correo, password_hash, rol)
@@ -313,52 +345,72 @@ def pdf_safe(text):
     return value.encode("latin-1", "replace").decode("latin-1")
 
 
-def add_pdf_header(pdf, logo_path, codigo):
-    pdf.set_fill_color(247, 245, 241)
-    pdf.rect(0, 0, 210, 38, style="F")
-    pdf.set_draw_color(225, 216, 206)
-    pdf.line(10, 38, 200, 38)
+class ReportPDF(FPDF):
+    def __init__(self, logo_path=None, codigo="SIN-CODIGO"):
+        super().__init__()
+        self.logo_path = logo_path
+        self.codigo = codigo or "SIN-CODIGO"
 
-    if logo_path and os.path.exists(logo_path):
-        pdf.image(logo_path, x=12, y=8, w=26)
+    def header(self):
+        self.set_fill_color(248, 244, 238)
+        self.rect(0, 0, 210, 28, style="F")
+        self.set_fill_color(214, 120, 84)
+        self.rect(0, 0, 210, 4, style="F")
+        self.set_draw_color(229, 220, 210)
+        self.line(self.l_margin, 28, self.w - self.r_margin, 28)
 
-    pdf.set_xy(44, 9)
-    pdf.set_text_color(41, 51, 65)
-    pdf.set_font("Helvetica", "B", 18)
-    pdf.cell(0, 8, pdf_safe("Reporte de Evaluacion"), new_x="LMARGIN", new_y="NEXT")
-    pdf.set_x(44)
-    pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(95, 105, 118)
-    pdf.cell(0, 5, pdf_safe("CONECTEA"), new_x="LMARGIN", new_y="NEXT")
+        if self.logo_path and os.path.exists(self.logo_path):
+            self.image(self.logo_path, x=self.l_margin, y=8, w=16)
 
-    pdf.set_xy(150, 11)
-    pdf.set_font("Helvetica", "B", 9)
-    pdf.set_text_color(240, 124, 86)
-    pdf.cell(44, 5, pdf_safe("CODIGO"), align="R", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_x(150)
-    pdf.set_font("Helvetica", "", 11)
-    pdf.set_text_color(41, 51, 65)
-    pdf.cell(44, 5, pdf_safe(codigo), align="R", new_x="LMARGIN", new_y="NEXT")
+        self.set_xy(self.l_margin + 20, 8)
+        self.set_font("Helvetica", "B", 15)
+        self.set_text_color(39, 49, 61)
+        self.cell(0, 6, pdf_safe("Reporte de Evaluación"), new_x="LMARGIN", new_y="NEXT")
 
-    pdf.set_y(46)
-    pdf.set_text_color(31, 41, 55)
+        self.set_x(self.l_margin + 20)
+        self.set_font("Helvetica", "", 9)
+        self.set_text_color(103, 110, 120)
+        self.cell(0, 5, pdf_safe("CONECTEA"), new_x="LMARGIN", new_y="NEXT")
+
+        self.set_xy(self.w - self.r_margin - 54, 8)
+        self.set_font("Helvetica", "B", 8)
+        self.set_text_color(214, 120, 84)
+        self.cell(54, 4, pdf_safe("CODIGO"), align="R", new_x="LMARGIN", new_y="NEXT")
+
+        self.set_x(self.w - self.r_margin - 54)
+        self.set_font("Helvetica", "", 10)
+        self.set_text_color(39, 49, 61)
+        self.cell(54, 5, pdf_safe(self.codigo), align="R")
+
+        self.set_y(35)
+
+    def footer(self):
+        self.set_y(-12)
+        self.set_draw_color(229, 220, 210)
+        self.line(self.l_margin, self.get_y() - 2, self.w - self.r_margin, self.get_y() - 2)
+        self.set_font("Helvetica", "", 8)
+        self.set_text_color(133, 140, 148)
+        self.cell(0, 5, pdf_safe(f"CONECTEA  |  Página {self.page_no()}/{{nb}}"), align="C")
 
 
 def add_pdf_section_title(pdf, title):
-    pdf.ln(5)
-    pdf.set_draw_color(230, 223, 214)
-    pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
-    pdf.ln(3)
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.set_text_color(80, 63, 49)
-    pdf.cell(0, 7, pdf_safe(title), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+    y = pdf.get_y()
+    pdf.set_fill_color(255, 248, 242)
+    pdf.set_draw_color(235, 223, 211)
+    pdf.rect(pdf.l_margin, y, pdf.w - pdf.l_margin - pdf.r_margin, 9, style="DF")
+    pdf.set_xy(pdf.l_margin + 4, y + 1.4)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_text_color(103, 72, 50)
+    pdf.cell(0, 6, pdf_safe(title), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
     pdf.set_text_color(31, 41, 55)
 
 
 def add_pdf_info_grid(pdf, items, columns=2):
-    gap = 8
+    gap = 6
     width = (pdf.w - pdf.l_margin - pdf.r_margin - gap * (columns - 1)) / columns
-    row_height = 14
+    row_height = 16
 
     for start in range(0, len(items), columns):
         row_items = items[start:start + columns]
@@ -368,20 +420,22 @@ def add_pdf_info_grid(pdf, items, columns=2):
         for column, (label, value) in enumerate(row_items):
             x = pdf.l_margin + column * (width + gap)
             text_value = pdf_safe(value) or "-"
-            extra_lines = max(1, int(len(text_value) / 34) + 1)
-            box_height = max(row_height, 8 + extra_lines * 4)
+            extra_lines = max(1, int(len(text_value) / 30) + 1)
+            box_height = max(row_height, 9 + extra_lines * 4.6)
             max_height = max(max_height, box_height)
 
-            pdf.set_fill_color(251, 249, 246)
-            pdf.set_draw_color(228, 222, 214)
+            pdf.set_fill_color(252, 250, 247)
+            pdf.set_draw_color(231, 225, 217)
             pdf.rect(x, y, width, box_height, style="DF")
+            pdf.set_fill_color(240, 234, 227)
+            pdf.rect(x, y, width, 5.5, style="F")
 
-            pdf.set_xy(x + 3, y + 2.5)
+            pdf.set_xy(x + 3, y + 1.1)
             pdf.set_font("Helvetica", "B", 8)
-            pdf.set_text_color(121, 112, 101)
+            pdf.set_text_color(121, 100, 84)
             pdf.cell(width - 6, 4, pdf_safe(label.upper()))
 
-            pdf.set_xy(x + 3, y + 7)
+            pdf.set_xy(x + 3, y + 7.8)
             pdf.set_font("Helvetica", "", 10)
             pdf.set_text_color(31, 41, 55)
             pdf.multi_cell(width - 6, 4.3, text_value)
@@ -389,83 +443,182 @@ def add_pdf_info_grid(pdf, items, columns=2):
         pdf.set_y(y + max_height + 4)
 
 
+def probability_color(label):
+    value = (label or "").lower()
+    if "leve" in value:
+        return (222, 181, 82)
+    if "moderado" in value:
+        return (223, 136, 67)
+    if "severo" in value or "alto" in value:
+        return (196, 89, 69)
+    return (108, 146, 115)
+
+
 def add_pdf_probabilities(pdf, probabilities):
     if not probabilities:
         pdf.set_font("Helvetica", "", 10)
-        pdf.cell(0, 7, "No hay probabilidades disponibles.", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 7, pdf_safe("No hay probabilidades disponibles."), new_x="LMARGIN", new_y="NEXT")
         return
 
-    pdf.set_font("Helvetica", "B", 10)
-    pdf.set_fill_color(242, 237, 231)
-    pdf.set_text_color(80, 63, 49)
-    pdf.cell(110, 8, "Nivel", border=1, fill=True)
-    pdf.cell(0, 8, "Probabilidad", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
-
     pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(31, 41, 55)
-    fill = False
-    for nivel, prob in probabilities.items():
+    pdf.set_text_color(85, 95, 108)
+    pdf.multi_cell(
+        0,
+        5,
+        pdf_safe("Distribución estimada por nivel. Las barras ayudan a comparar visualmente el peso de cada categoría."),
+    )
+    pdf.ln(1)
+
+    ordered = sorted(probabilities.items(), key=lambda item: float(item[1]), reverse=True)
+    for nivel, prob in ordered:
         pct = max(0, min(float(prob) * 100, 100))
-        pdf.set_fill_color(251, 249, 246 if fill else 255)
-        pdf.cell(110, 8, pdf_safe(nivel), border=1, fill=fill)
-        pdf.cell(0, 8, pdf_safe(f"{pct:.1f}%"), border=1, fill=fill, new_x="LMARGIN", new_y="NEXT")
-        fill = not fill
+        y = pdf.get_y()
+        label_w = 52
+        bar_x = pdf.l_margin + label_w + 8
+        bar_w = pdf.w - pdf.r_margin - bar_x - 22
+        color = probability_color(nivel)
+
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(55, 65, 76)
+        pdf.set_xy(pdf.l_margin, y + 1)
+        pdf.cell(label_w, 5, pdf_safe(nivel))
+
+        pdf.set_fill_color(237, 232, 225)
+        pdf.set_draw_color(237, 232, 225)
+        pdf.rect(bar_x, y + 1.5, bar_w, 4.6, style="DF")
+
+        pdf.set_fill_color(*color)
+        pdf.rect(bar_x, y + 1.5, bar_w * (pct / 100), 4.6, style="F")
+
+        pdf.set_xy(bar_x + bar_w + 4, y + 0.3)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(*color)
+        pdf.cell(18, 6, pdf_safe(f"{pct:.1f}%"), align="R")
+        pdf.ln(9)
 
 
 def add_pdf_responses_table(pdf, respuestas):
     if not respuestas:
         return
 
-    pdf.set_font("Helvetica", "B", 9)
-    pdf.set_fill_color(242, 237, 231)
-    pdf.set_text_color(80, 63, 49)
-    col_w = [24, 20, 24, 20, 24, 20, 24, 20]
-    headers = ["Pregunta", "Resp.", "Pregunta", "Resp.", "Pregunta", "Resp.", "Pregunta", "Resp."]
-    for width, header in zip(col_w, headers):
-        pdf.cell(width, 8, header, border=1, align="C", fill=True)
-    pdf.ln()
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(85, 95, 108)
+    pdf.multi_cell(
+        0,
+        5,
+        pdf_safe("Resumen compacto de respuestas del cuestionario. Se muestra cada ítem con la respuesta registrada."),
+    )
+    pdf.ln(2)
 
+    col_gap = 6
+    col_w = (pdf.w - pdf.l_margin - pdf.r_margin - col_gap) / 2
+    row_h = 8
+
+    for start in range(0, len(respuestas), 2):
+        if pdf.get_y() + row_h + 2 > pdf.page_break_trigger:
+            pdf.add_page()
+        y = pdf.get_y()
+        pair = respuestas[start:start + 2]
+        for idx, value in enumerate(pair):
+            x = pdf.l_margin + idx * (col_w + col_gap)
+            respuesta = "Sí" if value == 1 else "No"
+            fill_color = (235, 246, 238) if value == 1 else (249, 238, 236)
+            accent_color = (95, 145, 110) if value == 1 else (187, 92, 78)
+
+            pdf.set_fill_color(252, 250, 247)
+            pdf.set_draw_color(231, 225, 217)
+            pdf.rect(x, y, col_w, row_h, style="DF")
+
+            pdf.set_fill_color(*fill_color)
+            pdf.rect(x + 2, y + 1.5, 18, 5, style="F")
+            pdf.set_xy(x + 2, y + 1.8)
+            pdf.set_font("Helvetica", "B", 8)
+            pdf.set_text_color(*accent_color)
+            pdf.cell(18, 4, pdf_safe(f"Q{start + idx + 1}"), align="C")
+
+            pdf.set_xy(x + 24, y + 1.75)
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_text_color(44, 54, 66)
+            pdf.cell(col_w - 26, 4.2, pdf_safe(f"Respuesta: {respuesta}"), new_x="RIGHT", new_y="TOP")
+
+        if len(pair) == 1:
+            x = pdf.l_margin + col_w + col_gap
+            pdf.set_fill_color(255, 255, 255)
+            pdf.set_draw_color(255, 255, 255)
+            pdf.rect(x, y, col_w, row_h, style="F")
+        pdf.ln(row_h + 2)
+
+
+def add_pdf_summary_card(pdf, data_eval, pdf_date):
+    y = pdf.get_y()
+    card_h = 31
+    card_w = pdf.w - pdf.l_margin - pdf.r_margin
+    score_pct = round(float(data_eval.get("score_pct", 0)), 1)
+    score_value = pdf_safe(str(data_eval.get("score", "-")))
+    level_text = pdf_safe(data_eval.get("clase_predicha_texto", "-"))
+
+    pdf.set_fill_color(249, 246, 241)
+    pdf.set_draw_color(229, 220, 210)
+    pdf.rect(pdf.l_margin, y, card_w, card_h, style="DF")
+
+    pdf.set_fill_color(214, 120, 84)
+    pdf.rect(pdf.l_margin, y, 38, card_h, style="F")
+    pdf.set_xy(pdf.l_margin, y + 6)
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(38, 7, score_value, align="C", new_x="RIGHT", new_y="TOP")
+    pdf.set_xy(pdf.l_margin, y + 15)
     pdf.set_font("Helvetica", "", 9)
-    pdf.set_text_color(31, 41, 55)
-    fill = False
-    for start in range(0, len(respuestas), 4):
-        row = respuestas[start:start + 4]
-        pdf.set_fill_color(251, 249, 246 if fill else 255)
-        for offset, value in enumerate(row):
-            respuesta = "Si" if value == 1 else "No"
-            pdf.cell(24, 7, pdf_safe(f"Q{start + offset + 1}"), border=1, align="C", fill=fill)
-            pdf.cell(20, 7, pdf_safe(respuesta), border=1, align="C", fill=fill)
-        for _ in range(4 - len(row)):
-            pdf.cell(24, 7, "", border=1, fill=fill)
-            pdf.cell(20, 7, "", border=1, fill=fill)
-        pdf.ln()
-        fill = not fill
+    pdf.cell(38, 5, "/ 40", align="C")
+
+    pdf.set_xy(pdf.l_margin + 44, y + 5)
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_text_color(69, 52, 40)
+    pdf.cell(0, 6, level_text, new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_x(pdf.l_margin + 44)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(92, 102, 113)
+    pdf.cell(0, 5, pdf_safe(f"Porcentaje del cuestionario: {score_pct}%"), new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_x(pdf.l_margin + 44)
+    pdf.cell(0, 5, pdf_safe(f"Fecha del reporte: {pdf_date.strftime('%Y-%m-%d %H:%M')}"), new_x="LMARGIN", new_y="NEXT")
+
+    bar_x = pdf.l_margin + 44
+    bar_y = y + 22
+    bar_w = card_w - 52
+    pdf.set_fill_color(235, 229, 221)
+    pdf.rect(bar_x, bar_y, bar_w, 4.8, style="F")
+    pdf.set_fill_color(214, 120, 84)
+    pdf.rect(bar_x, bar_y, bar_w * max(0, min(score_pct / 100, 1)), 4.8, style="F")
+    pdf.set_y(y + card_h + 5)
 
 
 def build_pdf_document(data_eval, datos_personales, datos_nino, generated_at=None):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.set_title("Reporte de Evaluacion - CONECTEA")
-    pdf.set_author("CONECTEA")
-
     logo_path = os.path.join(app.root_path, "static", "images", "logo.png")
     codigo = ""
     if datos_personales:
         codigo = datos_personales.get("codigo", "")
 
-    add_pdf_header(pdf, logo_path, codigo or "SIN-CODIGO")
+    pdf = ReportPDF(logo_path=logo_path, codigo=codigo or "SIN-CODIGO")
+    pdf.set_margins(12, 12, 12)
+    pdf.set_auto_page_break(auto=True, margin=18)
+    pdf.alias_nb_pages()
+    pdf.add_page()
+    pdf.set_title("Reporte de Evaluación - CONECTEA")
+    pdf.set_author("CONECTEA")
 
     pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(95, 105, 118)
+    pdf.set_text_color(88, 98, 110)
     pdf.multi_cell(
         0,
         5,
         pdf_safe(
-            "Documento generado a partir de la evaluacion completada en CONECTEA. "
-            "Presenta un resumen legible para consulta y seguimiento."
+            "Documento generado a partir de la evaluación completada en CONECTEA. "
+            "Presenta un resumen claro y ordenado para consulta, seguimiento y revisión profesional."
         ),
     )
+    pdf.ln(2)
 
     if datos_personales:
         add_pdf_section_title(pdf, "Datos del apoderado")
@@ -482,36 +635,18 @@ def build_pdf_document(data_eval, datos_personales, datos_nino, generated_at=Non
         )
 
     if datos_nino:
-        add_pdf_section_title(pdf, "Datos del nino(a)")
+        add_pdf_section_title(pdf, "Datos del niño(a)")
         add_pdf_info_grid(
             pdf,
             [
                 ("Sexo", datos_nino.get("sexo", "-") or "-"),
-                ("Edad", f"{datos_nino.get('edad', '-')} anos"),
+                ("Edad", f"{datos_nino.get('edad', '-')} años"),
             ],
         )
 
     add_pdf_section_title(pdf, "Resumen del resultado")
     pdf_date = generated_at or datetime.now()
-    pdf.set_fill_color(250, 247, 243)
-    pdf.set_draw_color(228, 222, 214)
-    y = pdf.get_y()
-    pdf.rect(pdf.l_margin, y, pdf.w - pdf.l_margin - pdf.r_margin, 23, style="DF")
-    pdf.set_xy(pdf.l_margin + 4, y + 4)
-    pdf.set_font("Helvetica", "B", 18)
-    pdf.set_text_color(41, 51, 65)
-    pdf.cell(34, 8, pdf_safe(str(data_eval["score"])))
-    pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(95, 105, 118)
-    pdf.cell(26, 8, pdf_safe("/ 40"))
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.set_text_color(80, 63, 49)
-    pdf.cell(0, 8, pdf_safe(data_eval["clase_predicha_texto"]), new_x="LMARGIN", new_y="NEXT")
-    pdf.set_x(pdf.l_margin + 4)
-    pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(31, 41, 55)
-    pdf.cell(0, 5, pdf_safe(f"Porcentaje: {round(data_eval['score_pct'], 1)}%  |  Fecha: {pdf_date.strftime('%Y-%m-%d %H:%M')}"), new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(12)
+    add_pdf_summary_card(pdf, data_eval, pdf_date)
 
     add_pdf_section_title(pdf, "Probabilidades por nivel")
     add_pdf_probabilities(pdf, data_eval.get("probabilidades", {}))
@@ -528,7 +663,7 @@ def build_pdf_document(data_eval, datos_personales, datos_nino, generated_at=Non
         0,
         5,
         pdf_safe(
-            "Este reporte es una herramienta de apoyo y no reemplaza una evaluacion clinica profesional."
+            "Este reporte es una herramienta de apoyo y no reemplaza una evaluación clínica profesional."
         ),
     )
 
@@ -800,9 +935,6 @@ def download_evaluation_pdf(evaluacion_id):
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if session.get("user_role"):
-        return redirect(url_for("dashboard_redirect"))
-
     if request.method == "POST":
         correo = request.form.get("correo", "").strip().lower()
         password = request.form.get("password", "")
@@ -1059,4 +1191,6 @@ def add_note(evaluacion_id):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug_mode = is_truthy(os.getenv("FLASK_DEBUG", "false"))
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)
