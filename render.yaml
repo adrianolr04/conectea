@@ -1,6 +1,6 @@
 databases:
   - name: conectea-db
-    plan: basic-256mb
+    plan: free
 
 services:
   - type: web
