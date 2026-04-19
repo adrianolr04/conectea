@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: conectea-web
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: ADMIN_NAME
+        value: Administrador
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DB_HOST
+        fromDatabase:
+          name: conectea-db
+          property: host
+      - key: DB_NAME
+        fromDatabase:
+          name: conectea-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: conectea-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: conectea-db
+          property: password
+      - key: DB_PORT
+        fromDatabase:
+          name: conectea-db
+          property: port
+
+databases:
+  - name: conectea-db
+    plan: basic-256mb
+    databaseName: conectea
+    user: conectea_user
+    ipAllowList: []

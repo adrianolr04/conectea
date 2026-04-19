@@ -679,6 +679,8 @@ def home():
 
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
+    session.pop("_flashes", None)
+
     if request.method == "POST":
         datos = {
             "nombre_padre": request.form.get("nombre_padre", "").strip(),
@@ -1190,4 +1192,4 @@ def add_note(evaluacion_id):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=True)
