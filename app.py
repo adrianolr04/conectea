@@ -351,6 +351,55 @@ def dashboard_for_role():
     return url_for("specialist_dashboard")
 
 
+def build_level_distribution(rows):
+    palette = {
+        "Sin autismo": "#2e7d5b",
+        "Autismo leve": "#c98a1a",
+        "Autismo moderado": "#c96c4a",
+        "Autismo severo": "#d35745",
+    }
+    ordered_labels = ["Sin autismo", "Autismo leve", "Autismo moderado", "Autismo severo"]
+    counts = {label: 0 for label in ordered_labels}
+
+    for row in rows or []:
+        label = row.get("nivel_autismo") or "Sin clasificar"
+        counts[label] = int(row.get("total") or 0)
+
+    total = sum(counts.values())
+    chart_items = []
+    start = 0.0
+    chart_segments = []
+
+    for label in ordered_labels:
+        count = counts.get(label, 0)
+        pct = (count / total * 100) if total else 0
+        end = start + pct
+        color = palette.get(label, "#94a3b8")
+        chart_items.append(
+            {
+                "label": label,
+                "count": count,
+                "pct": round(pct, 1),
+                "color": color,
+            }
+        )
+        if pct > 0:
+            chart_segments.append(f"{color} {start:.2f}% {end:.2f}%")
+        start = end
+
+    chart_style = (
+        f"conic-gradient({', '.join(chart_segments)})"
+        if chart_segments
+        else "conic-gradient(#e7dfd2 0 100%)"
+    )
+
+    return {
+        "total": total,
+        "items": chart_items,
+        "chart_style": chart_style,
+    }
+
+
 def pdf_safe(text):
     value = "" if text is None else str(text)
     return value.encode("latin-1", "replace").decode("latin-1")
@@ -1075,10 +1124,20 @@ def specialist_dashboard():
         """
     )
 
+    level_rows = fetch_all(
+        """
+        SELECT nivel_autismo, COUNT(*) AS total
+        FROM evaluaciones
+        GROUP BY nivel_autismo;
+        """
+    )
+    level_distribution = build_level_distribution(level_rows)
+
     return render_template(
         "specialist_dashboard.html",
         evaluations=evaluations,
         stats=stats or {},
+        level_distribution=level_distribution,
         query_text=query_text,
     )
 

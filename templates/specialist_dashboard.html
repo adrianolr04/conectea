@@ -53,6 +53,37 @@
                 </article>
 
                 <article class="summary-card">
+                    <div class="distribution-header">
+                        <div>
+                            <h3>Distribución por nivel</h3>
+                            <p>Resumen de pacientes según el nivel estimado registrado.</p>
+                        </div>
+                        <span class="distribution-total">{{ level_distribution.total }} casos</span>
+                    </div>
+
+                    <div class="donut-card">
+                        <div class="donut-chart" style="background: {{ level_distribution.chart_style }};">
+                            <div class="donut-hole">
+                                <strong>{{ level_distribution.total }}</strong>
+                                <span>pacientes</span>
+                            </div>
+                        </div>
+
+                        <div class="donut-legend">
+                            {% for item in level_distribution.items %}
+                                <div class="donut-legend-item">
+                                    <span class="legend-dot" style="background: {{ item.color }};"></span>
+                                    <div class="legend-copy">
+                                        <strong>{{ item.label }}</strong>
+                                        <span>{{ item.count }} pacientes · {{ item.pct }}%</span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </article>
+
+                <article class="summary-card">
                     <h3>Búsqueda</h3>
                     <p>Busca por código, nombre del paciente o distrito para encontrar un caso más rápido.</p>
                 </article>
