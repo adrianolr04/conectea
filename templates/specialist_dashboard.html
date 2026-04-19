@@ -18,7 +18,7 @@
             </div>
 
             <div class="hero-actions">
-                <a href="{{ url_for('logout') }}" class="submit-btn submit-btn-secondary">Cerrar sesion</a>
+                <a href="{{ url_for('logout') }}" class="submit-btn submit-btn-secondary">Cerrar sesión</a>
             </div>
         </div>
 
@@ -35,7 +35,7 @@
         <section class="dashboard-grid">
             <aside class="sticky-column">
                 <article class="summary-card">
-                    <h3>Vista rapida</h3>
+                    <h3>Vista rápida</h3>
                     <div class="stats-row stats-row-single">
                         <div class="stat-pill">
                             <strong>{{ stats.total_evaluaciones or 0 }}</strong>
@@ -43,7 +43,7 @@
                         </div>
                         <div class="stat-pill">
                             <strong>{{ stats.total_pacientes or 0 }}</strong>
-                            <span>Pacientes unicos</span>
+                            <span>Pacientes únicos</span>
                         </div>
                         <div class="stat-pill">
                             <strong>{{ stats.score_promedio or 0 }}</strong>
@@ -53,8 +53,8 @@
                 </article>
 
                 <article class="summary-card">
-                    <h3>Busqueda</h3>
-                    <p>Busca por codigo, nombre del paciente o distrito para encontrar un caso mas rapido.</p>
+                    <h3>Búsqueda</h3>
+                    <p>Busca por código, nombre del paciente o distrito para encontrar un caso más rápido.</p>
                 </article>
             </aside>
 
@@ -62,7 +62,7 @@
                 <article class="result-block">
                     <form method="GET" action="{{ url_for('specialist_dashboard') }}">
                         <div class="search-row">
-                            <input type="text" name="q" value="{{ query_text }}" class="form-input" placeholder="Buscar por codigo, paciente o distrito">
+                            <input type="text" name="q" value="{{ query_text }}" class="form-input" placeholder="Buscar por código, paciente o distrito">
                             <button type="submit" class="submit-btn">Buscar</button>
                         </div>
                     </form>
@@ -71,14 +71,14 @@
                 <article class="result-block">
                     <div class="section-heading">
                         <h2>Evaluaciones registradas</h2>
-                        <p>Selecciona una evaluacion para revisar datos, respuestas y notas.</p>
+                        <p>Selecciona una evaluación para revisar datos, respuestas y notas.</p>
                     </div>
 
                     <div class="table-shell">
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Codigo</th>
+                                    <th>Código</th>
                                     <th>Paciente</th>
                                     <th>Edad</th>
                                     <th>Distrito</th>

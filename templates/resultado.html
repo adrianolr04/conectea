@@ -97,12 +97,30 @@
                             {% for nivel, probabilidad in resultado['probabilidades'].items() %}
                                 <li>
                                     <span>{{ nivel }}</span>
-                                    <span>{{ probabilidad | round(3) }}</span>
+                                    <span>{{ (probabilidad * 100) | round(1) }}%</span>
                                 </li>
                             {% endfor %}
                         </ul>
                     </article>
                 </div>
+
+                <article class="result-block pdf-preview-block">
+                    <div class="pdf-preview-header">
+                        <div>
+                            <h3>Vista previa del PDF</h3>
+                            <p>Revisa el reporte dentro de la página y luego descárgalo si todo está correcto.</p>
+                        </div>
+                        <span class="preview-chip">Visualización en línea</span>
+                    </div>
+
+                    <div class="pdf-frame-shell">
+                        <iframe
+                            src="{{ url_for('descargar_pdf') }}?inline=1"
+                            class="pdf-frame"
+                            title="Vista previa del reporte PDF"
+                        ></iframe>
+                    </div>
+                </article>
 
                 <article class="result-block">
                     <h3>Acciones disponibles</h3>

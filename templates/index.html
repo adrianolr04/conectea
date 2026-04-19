@@ -40,8 +40,8 @@
                     <h3>Recomendaciones</h3>
                     <ul class="check-list">
                         <li>Tómate el tiempo necesario para responder con tranquilidad.</li>
-                        <li>Evita dejar preguntas en blanco para no perder el avance.</li>
-                        <li>Al final podrás ver el score y descargar el reporte.</li>
+                        <li>Pasa el mouse por el ícono de info para ver ejemplos de cada pregunta.</li>
+                        <li>Al final podrás revisar una vista previa del PDF antes de descargarlo.</li>
                     </ul>
                 </div>
             </aside>
@@ -74,411 +74,38 @@
                     </div>
 
                     <div class="preguntas">
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 1</span>
-                            <p class="pregunta-texto">¿Es capaz de hablar usando frases u oraciones cortas?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q1_no" name="Q1" value="0" required>
-                                <label for="Q1_no" class="radio-label">No</label>
-                                <input type="radio" id="Q1_si" name="Q1" value="1">
-                                <label for="Q1_si" class="radio-label">Sí</label>
+                        {% for item in question_items %}
+                            <div class="pregunta">
+                                <div class="question-header">
+                                    <span class="question-number">Pregunta {{ item.number }}</span>
+                                    <div class="info-popover">
+                                        <button
+                                            type="button"
+                                            class="info-trigger"
+                                            aria-label="Ver ejemplo de la pregunta {{ item.number }}"
+                                        >
+                                            i
+                                        </button>
+                                        <div class="info-tooltip" role="tooltip">
+                                            {{ item.example }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p class="pregunta-texto">{{ item.text }}</p>
+
+                                <div class="opciones">
+                                    <input type="radio" id="Q{{ item.number }}_no" name="Q{{ item.number }}" value="0" required>
+                                    <label for="Q{{ item.number }}_no" class="radio-label">No</label>
+                                    <input type="radio" id="Q{{ item.number }}_si" name="Q{{ item.number }}" value="1">
+                                    <label for="Q{{ item.number }}_si" class="radio-label">Sí</label>
+                                </div>
                             </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 2</span>
-                            <p class="pregunta-texto">¿Tiene conversaciones con él o con ella, en la que participen ambos y se vayan turnando o vayan construyendo sobre lo ya dicho?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q2_no" name="Q2" value="0" required>
-                                <label for="Q2_no" class="radio-label">No</label>
-                                <input type="radio" id="Q2_si" name="Q2" value="1">
-                                <label for="Q2_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 3</span>
-                            <p class="pregunta-texto">¿Usa algunas veces frases raras o dice la misma cosa una y otra vez y casi exactamente de la misma manera ya sean frases que ha oído a otras personas o frases que se inventa?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q3_no" name="Q3" value="0" required>
-                                <label for="Q3_no" class="radio-label">No</label>
-                                <input type="radio" id="Q3_si" name="Q3" value="1">
-                                <label for="Q3_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 4</span>
-                            <p class="pregunta-texto">¿Hace en ocasiones preguntas o afirmaciones socialmente inconvenientes, tales como preguntas indiscretas o comentarios personales en momentos inoportunos?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q4_no" name="Q4" value="0" required>
-                                <label for="Q4_no" class="radio-label">No</label>
-                                <input type="radio" id="Q4_si" name="Q4" value="1">
-                                <label for="Q4_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 5</span>
-                            <p class="pregunta-texto">¿Confunde a veces los pronombres diciendo, por ejemplo “tú” o “ella” en lugar de “yo”?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q5_no" name="Q5" value="0" required>
-                                <label for="Q5_no" class="radio-label">No</label>
-                                <input type="radio" id="Q5_si" name="Q5" value="1">
-                                <label for="Q5_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 6</span>
-                            <p class="pregunta-texto">¿Usa alguna vez palabras que ha inventado, expresa algunas cosas de una manera rara o indirecta o usa formas metafóricas para referirse a las cosas, como por ejemplo, decir “lluvia caliente” en lugar de “vapor”?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q6_no" name="Q6" value="0" required>
-                                <label for="Q6_no" class="radio-label">No</label>
-                                <input type="radio" id="Q6_si" name="Q6" value="1">
-                                <label for="Q6_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 7</span>
-                            <p class="pregunta-texto">¿Dice en ocasiones la misma cosa una y otra vez y exactamente de la misma manera o insiste para que usted diga las mismas cosas una y otra vez?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q7_no" name="Q7" value="0" required>
-                                <label for="Q7_no" class="radio-label">No</label>
-                                <input type="radio" id="Q7_si" name="Q7" value="1">
-                                <label for="Q7_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 8</span>
-                            <p class="pregunta-texto">¿Insiste alguna vez en hacer ciertas cosas de una manera o en un orden muy particular o hay determinados “rituales” que pretende que usted respete?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q8_no" name="Q8" value="0" required>
-                                <label for="Q8_no" class="radio-label">No</label>
-                                <input type="radio" id="Q8_si" name="Q8" value="1">
-                                <label for="Q8_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 9</span>
-                            <p class="pregunta-texto">¿Piensa usted que por lo general su expresión facial se puede considerar adecuada a la situación del momento?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q9_no" name="Q9" value="0" required>
-                                <label for="Q9_no" class="radio-label">No</label>
-                                <input type="radio" id="Q9_si" name="Q9" value="1">
-                                <label for="Q9_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 10</span>
-                            <p class="pregunta-texto">¿Usa alguna vez la mano de usted como una herramienta o como si fuera parte de su propio cuerpo, por ejemplo, apuntando con su dedo o poniendo la mano de usted en el tirador de la puerta para lograr que la abriese?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q10_no" name="Q10" value="0" required>
-                                <label for="Q10_no" class="radio-label">No</label>
-                                <input type="radio" id="Q10_si" name="Q10" value="1">
-                                <label for="Q10_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 11</span>
-                            <p class="pregunta-texto">¿Muestra alguna vez interés por ciertas cosas que le preocupan mucho y que a otras personas les parecen extrañas, por ejemplo, semáforos, tuberías de desagüe u horarios de transporte?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q11_no" name="Q11" value="0" required>
-                                <label for="Q11_no" class="radio-label">No</label>
-                                <input type="radio" id="Q11_si" name="Q11" value="1">
-                                <label for="Q11_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 12</span>
-                            <p class="pregunta-texto">¿Se interesa algunas veces más en las piezas de un juguete o de un objeto, por ejemplo dar vueltas a las ruedas de un coche, que en usar el objeto de acuerdo a su finalidad?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q12_no" name="Q12" value="0" required>
-                                <label for="Q12_no" class="radio-label">No</label>
-                                <input type="radio" id="Q12_si" name="Q12" value="1">
-                                <label for="Q12_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 13</span>
-                            <p class="pregunta-texto">¿Muestra un interés especial por algún tema, por ejemplo trenes o dinosaurios, que aun siendo normal a su edad y en su ambiente, parece fuera de lo normal por su intensidad?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q13_no" name="Q13" value="0" required>
-                                <label for="Q13_no" class="radio-label">No</label>
-                                <input type="radio" id="Q13_si" name="Q13" value="1">
-                                <label for="Q13_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 14</span>
-                            <p class="pregunta-texto">¿Muestra a veces interés excepcional por la vista, el tacto, el sonido, el sabor o el olor de las cosas o las personas?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q14_no" name="Q14" value="0" required>
-                                <label for="Q14_no" class="radio-label">No</label>
-                                <input type="radio" id="Q14_si" name="Q14" value="1">
-                                <label for="Q14_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 15</span>
-                            <p class="pregunta-texto">¿Realiza en ocasiones gestos o movimientos extraños con las manos o los dedos, como agitar o mover sus dedos delante de sus ojos?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q15_no" name="Q15" value="0" required>
-                                <label for="Q15_no" class="radio-label">No</label>
-                                <input type="radio" id="Q15_si" name="Q15" value="1">
-                                <label for="Q15_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 16</span>
-                            <p class="pregunta-texto">¿Realiza en ocasiones movimientos complicados de su cuerpo, como dar vueltas, retorcerse o dar saltos repetidos en el sitio?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q16_no" name="Q16" value="0" required>
-                                <label for="Q16_no" class="radio-label">No</label>
-                                <input type="radio" id="Q16_si" name="Q16" value="1">
-                                <label for="Q16_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 17</span>
-                            <p class="pregunta-texto">¿Se hace daño a propósito alguna vez, por ejemplo, mordiéndose un brazo o golpeándose la cabeza?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q17_no" name="Q17" value="0" required>
-                                <label for="Q17_no" class="radio-label">No</label>
-                                <input type="radio" id="Q17_si" name="Q17" value="1">
-                                <label for="Q17_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 18</span>
-                            <p class="pregunta-texto">¿Tiene algún objeto que necesita llevar consigo, aparte de un muñeco o una manta?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q18_no" name="Q18" value="0" required>
-                                <label for="Q18_no" class="radio-label">No</label>
-                                <input type="radio" id="Q18_si" name="Q18" value="1">
-                                <label for="Q18_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 19</span>
-                            <p class="pregunta-texto">¿Tiene un amigo íntimo o alguna amistad en particular?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q19_no" name="Q19" value="0" required>
-                                <label for="Q19_no" class="radio-label">No</label>
-                                <input type="radio" id="Q19_si" name="Q19" value="1">
-                                <label for="Q19_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 20</span>
-                            <p class="pregunta-texto">¿Habla con usted alguna vez solo para ser simpático y amable y no para conseguir algo?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q20_no" name="Q20" value="0" required>
-                                <label for="Q20_no" class="radio-label">No</label>
-                                <input type="radio" id="Q20_si" name="Q20" value="1">
-                                <label for="Q20_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 21</span>
-                            <p class="pregunta-texto">¿Imita alguna vez espontáneamente a otras personas o lo que hacen, como pasar la aspiradora, cocinar o arreglar cosas?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q21_no" name="Q21" value="0" required>
-                                <label for="Q21_no" class="radio-label">No</label>
-                                <input type="radio" id="Q21_si" name="Q21" value="1">
-                                <label for="Q21_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 22</span>
-                            <p class="pregunta-texto">¿Señala alguna vez espontáneamente las cosas que ve solo para mostrárselas a usted y no porque quiera obtenerlas?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q22_no" name="Q22" value="0" required>
-                                <label for="Q22_no" class="radio-label">No</label>
-                                <input type="radio" id="Q22_si" name="Q22" value="1">
-                                <label for="Q22_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 23</span>
-                            <p class="pregunta-texto">¿Hace alguna vez gestos para indicarle lo que quiere, aparte de señalar el objeto o tirarle a usted de la mano?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q23_no" name="Q23" value="0" required>
-                                <label for="Q23_no" class="radio-label">No</label>
-                                <input type="radio" id="Q23_si" name="Q23" value="1">
-                                <label for="Q23_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 24</span>
-                            <p class="pregunta-texto">¿Asiente con la cabeza para decir sí?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q24_no" name="Q24" value="0" required>
-                                <label for="Q24_no" class="radio-label">No</label>
-                                <input type="radio" id="Q24_si" name="Q24" value="1">
-                                <label for="Q24_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 25</span>
-                            <p class="pregunta-texto">¿Niega con la cabeza para decir no?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q25_no" name="Q25" value="0" required>
-                                <label for="Q25_no" class="radio-label">No</label>
-                                <input type="radio" id="Q25_si" name="Q25" value="1">
-                                <label for="Q25_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 26</span>
-                            <p class="pregunta-texto">Al hablarle o hacer algo con usted, ¿suele mirarle directamente a la cara?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q26_no" name="Q26" value="0" required>
-                                <label for="Q26_no" class="radio-label">No</label>
-                                <input type="radio" id="Q26_si" name="Q26" value="1">
-                                <label for="Q26_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 27</span>
-                            <p class="pregunta-texto">¿Devuelve la sonrisa cuando alguien le sonríe?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q27_no" name="Q27" value="0" required>
-                                <label for="Q27_no" class="radio-label">No</label>
-                                <input type="radio" id="Q27_si" name="Q27" value="1">
-                                <label for="Q27_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 28</span>
-                            <p class="pregunta-texto">¿Le muestra a usted cosas que le interesan a fin de captar su atención?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q28_no" name="Q28" value="0" required>
-                                <label for="Q28_no" class="radio-label">No</label>
-                                <input type="radio" id="Q28_si" name="Q28" value="1">
-                                <label for="Q28_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 29</span>
-                            <p class="pregunta-texto">¿Se ofrece alguna vez a compartir cosas con usted, aparte de alimentos?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q29_no" name="Q29" value="0" required>
-                                <label for="Q29_no" class="radio-label">No</label>
-                                <input type="radio" id="Q29_si" name="Q29" value="1">
-                                <label for="Q29_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 30</span>
-                            <p class="pregunta-texto">En su opinión, ¿quiere alguna vez que usted participe en sus juegos?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q30_no" name="Q30" value="0" required>
-                                <label for="Q30_no" class="radio-label">No</label>
-                                <input type="radio" id="Q30_si" name="Q30" value="1">
-                                <label for="Q30_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 31</span>
-                            <p class="pregunta-texto">¿Intenta alguna vez consolarle si ve que usted está triste o se ha hecho daño?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q31_no" name="Q31" value="0" required>
-                                <label for="Q31_no" class="radio-label">No</label>
-                                <input type="radio" id="Q31_si" name="Q31" value="1">
-                                <label for="Q31_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 32</span>
-                            <p class="pregunta-texto">Cuando quiere algo o buscaba ayuda, ¿le mira y hace gestos con sonidos o palabras para captar su atención?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q32_no" name="Q32" value="0" required>
-                                <label for="Q32_no" class="radio-label">No</label>
-                                <input type="radio" id="Q32_si" name="Q32" value="1">
-                                <label for="Q32_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 33</span>
-                            <p class="pregunta-texto">¿Muestra una variedad normal de expresiones faciales?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q33_no" name="Q33" value="0" required>
-                                <label for="Q33_no" class="radio-label">No</label>
-                                <input type="radio" id="Q33_si" name="Q33" value="1">
-                                <label for="Q33_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 34</span>
-                            <p class="pregunta-texto">¿Alguna vez se une a juegos de grupo y trata de imitar las acciones y juegos sociales que se están haciendo?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q34_no" name="Q34" value="0" required>
-                                <label for="Q34_no" class="radio-label">No</label>
-                                <input type="radio" id="Q34_si" name="Q34" value="1">
-                                <label for="Q34_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 35</span>
-                            <p class="pregunta-texto">¿Juega a disfrazarse, a simular que es otra persona o a juegos de ficción en general?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q35_no" name="Q35" value="0" required>
-                                <label for="Q35_no" class="radio-label">No</label>
-                                <input type="radio" id="Q35_si" name="Q35" value="1">
-                                <label for="Q35_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 36</span>
-                            <p class="pregunta-texto">¿Muestra interés por niños de su edad a los que no conoce?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q36_no" name="Q36" value="0" required>
-                                <label for="Q36_no" class="radio-label">No</label>
-                                <input type="radio" id="Q36_si" name="Q36" value="1">
-                                <label for="Q36_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 37</span>
-                            <p class="pregunta-texto">¿Responde positivamente cuando se le acerca otro niño?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q37_no" name="Q37" value="0" required>
-                                <label for="Q37_no" class="radio-label">No</label>
-                                <input type="radio" id="Q37_si" name="Q37" value="1">
-                                <label for="Q37_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 38</span>
-                            <p class="pregunta-texto">Si usted entra a un cuarto y empieza a hablarle sin decir su nombre, ¿por lo general levanta la vista y le presta atención?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q38_no" name="Q38" value="0" required>
-                                <label for="Q38_no" class="radio-label">No</label>
-                                <input type="radio" id="Q38_si" name="Q38" value="1">
-                                <label for="Q38_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 39</span>
-                            <p class="pregunta-texto">¿Participa alguna vez con otros niños en juegos de ficción, de tal manera que quede claro que unos y otros comprenden en qué consiste el juego?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q39_no" name="Q39" value="0" required>
-                                <label for="Q39_no" class="radio-label">No</label>
-                                <input type="radio" id="Q39_si" name="Q39" value="1">
-                                <label for="Q39_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
-                        <div class="pregunta">
-                            <span class="question-number">Pregunta 40</span>
-                            <p class="pregunta-texto">¿Participaba activamente en juegos que requieren colaborar con otros niños en grupo, como jugar al escondite o a la pelota?</p>
-                            <div class="opciones">
-                                <input type="radio" id="Q40_no" name="Q40" value="0" required>
-                                <label for="Q40_no" class="radio-label">No</label>
-                                <input type="radio" id="Q40_si" name="Q40" value="1">
-                                <label for="Q40_si" class="radio-label">Sí</label>
-                            </div>
-                        </div>
+                        {% endfor %}
                     </div>
 
-                    <div class="hero-actions" style="margin-top: 28px;">
-                        <button type="submit" class="submit-btn">Enviar evaluación</button>
-                        <a href="{{ url_for('registro') }}" class="submit-btn submit-btn-secondary">Volver al registro</a>
+                    <div class="button-wrapper" style="margin-top: 28px;">
+                        <button type="submit" class="submit-btn">Ver resultado</button>
                     </div>
                 </form>
             </section>

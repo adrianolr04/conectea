@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detalle de Evaluacion - CONECTEA</title>
+    <title>Detalle de Evaluación - CONECTEA</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -12,8 +12,8 @@
             <div class="brand-lockup">
                 <img src="{{ url_for('static', filename='images/logo.png') }}" class="form-logo" alt="CONECTEA">
                 <div class="brand-copy">
-                    <span class="eyebrow">Detalle clinico</span>
-                    <h1 class="page-title">Evaluacion {{ evaluation.codigo }}</h1>
+                    <span class="eyebrow">Detalle clínico</span>
+                    <h1 class="page-title">Evaluación {{ evaluation.codigo }}</h1>
                 </div>
             </div>
 
@@ -43,7 +43,7 @@
                             <span>{{ evaluation.nombre_paciente }}</span>
                         </div>
                         <div class="patient-item">
-                            <strong>Codigo</strong>
+                            <strong>Código</strong>
                             <span>{{ evaluation.codigo }}</span>
                         </div>
                         <div class="patient-item">
@@ -73,7 +73,7 @@
                             <span>{{ evaluation.nombre_madre or '-' }}</span>
                         </div>
                         <div class="patient-item">
-                            <strong>Telefono</strong>
+                            <strong>Teléfono</strong>
                             <span>{{ evaluation.telefono or '-' }}</span>
                         </div>
                         <div class="patient-item">
@@ -93,7 +93,7 @@
                                 <strong>{{ evaluation.score }}</strong>
                                 <span class="score-badge">{{ evaluation.nivel_autismo }}</span>
                             </div>
-                            <p class="result-note">Fecha de evaluacion: {{ evaluation.created_at.strftime('%Y-%m-%d %H:%M') if evaluation.created_at else '-' }}</p>
+                            <p class="result-note">Fecha de evaluación: {{ evaluation.created_at.strftime('%Y-%m-%d %H:%M') if evaluation.created_at else '-' }}</p>
                         </div>
 
                         <div>
@@ -119,7 +119,7 @@
                     <article class="result-block">
                         <div class="section-heading">
                             <h2>Agregar nota profesional</h2>
-                            <p>Usa este espacio para dejar seguimiento clinico u observaciones internas.</p>
+                            <p>Usa este espacio para dejar seguimiento clínico u observaciones internas.</p>
                         </div>
 
                         <form method="POST" action="{{ url_for('add_note', evaluacion_id=evaluation.id) }}">
@@ -149,8 +149,8 @@
                             </div>
                         {% else %}
                             <div class="note-card">
-                                <strong>Sin notas aun</strong>
-                                <p>Todavia no se han registrado observaciones profesionales para esta evaluacion.</p>
+                                <strong>Sin notas aún</strong>
+                                <p>Todavía no se han registrado observaciones profesionales para esta evaluación.</p>
                             </div>
                         {% endfor %}
                     </div>
@@ -159,14 +159,14 @@
                 <article class="result-block">
                     <div class="section-heading">
                         <h2>Respuestas del cuestionario</h2>
-                        <p>Resumen de las 40 respuestas registradas en esta evaluacion.</p>
+                        <p>Resumen de las 40 respuestas registradas en esta evaluación.</p>
                     </div>
 
                     <div class="answers-grid">
                         {% for answer in evaluation.respuestas %}
                             <div class="answer-pill">
                                 <strong>Q{{ answer.numero }}</strong>
-                                <span>{{ 'Si' if answer.valor == 1 else 'No' }}</span>
+                                <span>{{ 'Sí' if answer.valor == 1 else 'No' }}</span>
                             </div>
                         {% endfor %}
                     </div>
