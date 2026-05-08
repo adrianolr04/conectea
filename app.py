@@ -8,6 +8,7 @@ from xml.sax.saxutils import escape
 from urllib.parse import urlparse
 
 import psycopg2
+from psycopg2 import sql
 from fpdf import FPDF
 from flask import (
     Flask,
@@ -268,6 +269,35 @@ def fetch_all(query, params=None):
     finally:
         cur.close()
         conn.close()
+
+
+def get_table_columns(conn, table_name):
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute(
+            """
+            SELECT column_name, is_nullable, column_default, data_type
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = %s
+            ORDER BY ordinal_position;
+            """,
+            (table_name,),
+        )
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        cur.close()
+
+
+def fallback_value_for_column(column):
+    data_type = column.get("data_type") or ""
+    if "int" in data_type or data_type in {"numeric", "double precision", "real"}:
+        return 0
+    if data_type == "boolean":
+        return False
+    if "timestamp" in data_type or data_type == "date":
+        return datetime.now()
+    return ""
 
 
 def login_required(*allowed_roles):
@@ -965,45 +995,44 @@ def registro():
         cur = None
         try:
             conn = get_connection()
+            table_columns = get_table_columns(conn, "pacientes")
+            column_info = {column["column_name"]: column for column in table_columns}
+            insert_data = {
+                column_name: value
+                for column_name, value in datos.items()
+                if column_name in column_info
+            }
+
+            for column_name, column in column_info.items():
+                if column_name == "id" or column_name in insert_data:
+                    continue
+                has_default = column.get("column_default") is not None
+                is_required = column.get("is_nullable") == "NO"
+                if is_required and not has_default:
+                    insert_data[column_name] = fallback_value_for_column(column)
+
+            if not insert_data:
+                raise RuntimeError("No se encontraron columnas compatibles en la tabla pacientes.")
+
             cur = conn.cursor()
             cur.execute(
-                """
-                INSERT INTO pacientes (
-                    nombre_padre,
-                    nombre_madre,
-                    dni,
-                    nombre_paciente,
-                    departamento,
-                    provincia,
-                    distrito,
-                    telefono,
-                    correo
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING id;
-                """,
-                (
-                    datos["nombre_padre"],
-                    datos["nombre_madre"],
-                    datos["dni"],
-                    datos["nombre_paciente"],
-                    datos["departamento"],
-                    datos["provincia"],
-                    datos["distrito"],
-                    datos["telefono"],
-                    datos["correo"],
+                sql.SQL("INSERT INTO pacientes ({fields}) VALUES ({placeholders}) RETURNING id;").format(
+                    fields=sql.SQL(", ").join(sql.Identifier(column_name) for column_name in insert_data),
+                    placeholders=sql.SQL(", ").join(sql.Placeholder() for _ in insert_data),
                 ),
+                tuple(insert_data.values()),
             )
             paciente_id = cur.fetchone()[0]
             codigo = f"CT-{datetime.now().year}-{paciente_id:05d}"
-            cur.execute(
-                """
-                UPDATE pacientes
-                SET codigo = %s
-                WHERE id = %s;
-                """,
-                (codigo, paciente_id),
-            )
+            if "codigo" in column_info:
+                cur.execute(
+                    """
+                    UPDATE pacientes
+                    SET codigo = %s
+                    WHERE id = %s;
+                    """,
+                    (codigo, paciente_id),
+                )
             conn.commit()
         except Exception as exc:
             if conn:
