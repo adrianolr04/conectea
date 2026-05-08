@@ -161,9 +161,26 @@ def ensure_schema():
             CREATE INDEX IF NOT EXISTS idx_usuarios_correo ON usuarios(correo);
             """
         )
-        cur.execute("ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS dni VARCHAR(20);")
-        cur.execute("ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS departamento VARCHAR(120);")
-        cur.execute("ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS provincia VARCHAR(120);")
+        schema_updates = [
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS codigo VARCHAR(30);",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS nombre_padre VARCHAR(150);",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS nombre_madre VARCHAR(150);",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS dni VARCHAR(20);",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS departamento VARCHAR(120);",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS provincia VARCHAR(120);",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS distrito VARCHAR(120);",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS telefono VARCHAR(30);",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS correo VARCHAR(150);",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS sexo VARCHAR(10);",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS edad INT;",
+            "ALTER TABLE evaluaciones ADD COLUMN IF NOT EXISTS score_pct NUMERIC(5, 2);",
+            "ALTER TABLE evaluaciones ADD COLUMN IF NOT EXISTS nivel_autismo VARCHAR(80);",
+            "ALTER TABLE evaluaciones ADD COLUMN IF NOT EXISTS probabilidades_json TEXT;",
+            "ALTER TABLE evaluaciones ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;",
+        ]
+        for statement in schema_updates:
+            cur.execute(statement)
 
         cur.execute("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1;")
         admin = cur.fetchone()
@@ -914,8 +931,10 @@ def registro():
                 form_data=datos,
             )
 
-        conn = get_connection()
+        conn = None
+        cur = None
         try:
+            conn = get_connection()
             cur = conn.cursor()
             cur.execute(
                 """
@@ -956,9 +975,20 @@ def registro():
                 (codigo, paciente_id),
             )
             conn.commit()
+        except Exception as exc:
+            if conn:
+                conn.rollback()
+            flash(f"No se pudo guardar el registro: {exc}", "error")
+            return render_template(
+                "registro.html",
+                location_options=LOCATION_OPTIONS,
+                form_data=datos,
+            )
         finally:
-            cur.close()
-            conn.close()
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
 
         datos["paciente_id"] = paciente_id
         datos["codigo"] = codigo
@@ -1002,8 +1032,10 @@ def procesar():
         score_pct = score / 40 * 100
         probabilidades = {k: float(v) for k, v in resultado_modelo["probabilidades"].items()}
 
-        conn = get_connection()
+        conn = None
+        cur = None
         try:
+            conn = get_connection()
             cur = conn.cursor()
             cur.execute(
                 """
@@ -1057,9 +1089,15 @@ def procesar():
                 (evaluacion_id, *respuestas_q),
             )
             conn.commit()
+        except Exception:
+            if conn:
+                conn.rollback()
+            raise
         finally:
-            cur.close()
-            conn.close()
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
 
         session["resultado"] = {
             "evaluacion_id": evaluacion_id,
