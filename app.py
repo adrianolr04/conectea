@@ -1,7 +1,10 @@
 import json
 import os
+import zipfile
+from io import BytesIO
 from datetime import datetime
 from functools import wraps
+from xml.sax.saxutils import escape
 from urllib.parse import urlparse
 
 import psycopg2
@@ -13,6 +16,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_file,
     session,
     url_for,
 )
@@ -350,6 +354,147 @@ def dashboard_for_role():
     if role == "admin":
         return url_for("admin_dashboard")
     return url_for("specialist_dashboard")
+
+
+def build_evaluations_query(query_text="", limit=None):
+    where_clause = ""
+    params = []
+
+    if query_text:
+        search = f"%{query_text}%"
+        where_clause = """
+            WHERE
+                p.codigo ILIKE %s OR
+                COALESCE(p.dni, '') ILIKE %s OR
+                p.nombre_paciente ILIKE %s OR
+                COALESCE(p.departamento, '') ILIKE %s OR
+                COALESCE(p.provincia, '') ILIKE %s OR
+                COALESCE(p.distrito, '') ILIKE %s OR
+                ev.nivel_autismo ILIKE %s
+        """
+        params = [search] * 7
+
+    limit_clause = ""
+    if limit:
+        limit_clause = "LIMIT %s"
+        params.append(limit)
+
+    return (
+        f"""
+        SELECT
+            ev.id,
+            ev.score,
+            ev.nivel_autismo,
+            ev.created_at,
+            p.codigo,
+            p.nombre_paciente,
+            p.dni,
+            p.edad,
+            p.departamento,
+            p.provincia,
+            p.distrito
+        FROM evaluaciones ev
+        INNER JOIN pacientes p ON p.id = ev.paciente_id
+        {where_clause}
+        ORDER BY ev.created_at DESC
+        {limit_clause};
+        """,
+        tuple(params),
+    )
+
+
+def fetch_dashboard_evaluations(query_text="", limit=None):
+    sql, params = build_evaluations_query(query_text=query_text, limit=limit)
+    return fetch_all(sql, params)
+
+
+def column_letter(index):
+    letters = ""
+    while index:
+        index, remainder = divmod(index - 1, 26)
+        letters = chr(65 + remainder) + letters
+    return letters
+
+
+def build_xlsx(rows, headers, sheet_name="Evaluaciones"):
+    def cell_xml(row_index, column_index, value, style_id=None):
+        cell_ref = f"{column_letter(column_index)}{row_index}"
+        style_attr = f' s="{style_id}"' if style_id is not None else ""
+        text = escape(str(value if value is not None else ""))
+        return f'<c r="{cell_ref}" t="inlineStr"{style_attr}><is><t>{text}</t></is></c>'
+
+    sheet_rows = []
+    all_rows = [headers] + rows
+    for row_index, row in enumerate(all_rows, start=1):
+        style_id = 1 if row_index == 1 else None
+        cells = "".join(
+            cell_xml(row_index, column_index, value, style_id=style_id)
+            for column_index, value in enumerate(row, start=1)
+        )
+        sheet_rows.append(f'<row r="{row_index}">{cells}</row>')
+
+    column_widths = []
+    for column_index, header in enumerate(headers, start=1):
+        values = [header] + [row[column_index - 1] for row in rows]
+        max_length = max(len(str(value if value is not None else "")) for value in values)
+        width = min(max(max_length + 3, 10), 34)
+        column_widths.append(
+            f'<col min="{column_index}" max="{column_index}" width="{width}" customWidth="1"/>'
+        )
+
+    worksheet_xml = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<cols>{''.join(column_widths)}</cols>
+<sheetData>{''.join(sheet_rows)}</sheetData>
+</worksheet>"""
+    workbook_xml = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets><sheet name="{escape(sheet_name)}" sheetId="1" r:id="rId1"/></sheets>
+</workbook>"""
+    styles_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="2"><font/><font><b/><color rgb="FFFFFFFF"/></font></fonts>
+<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF2F6C67"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="1"><border/></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs>
+</styleSheet>"""
+
+    output = BytesIO()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as workbook_zip:
+        workbook_zip.writestr(
+            "[Content_Types].xml",
+            """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>""",
+        )
+        workbook_zip.writestr(
+            "_rels/.rels",
+            """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>""",
+        )
+        workbook_zip.writestr(
+            "xl/_rels/workbook.xml.rels",
+            """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>""",
+        )
+        workbook_zip.writestr("xl/workbook.xml", workbook_xml)
+        workbook_zip.writestr("xl/worksheets/sheet1.xml", worksheet_xml)
+        workbook_zip.writestr("xl/styles.xml", styles_xml)
+
+    output.seek(0)
+    return output
 
 
 def build_level_distribution(rows):
@@ -1116,56 +1261,7 @@ def create_specialist():
 @login_required("especialista")
 def specialist_dashboard():
     query_text = request.args.get("q", "").strip()
-
-    if query_text:
-        evaluations = fetch_all(
-            """
-            SELECT
-                ev.id,
-                ev.score,
-                ev.nivel_autismo,
-                ev.created_at,
-                p.codigo,
-                p.nombre_paciente,
-                p.dni,
-                p.edad,
-                p.departamento,
-                p.provincia,
-                p.distrito
-            FROM evaluaciones ev
-            INNER JOIN pacientes p ON p.id = ev.paciente_id
-            WHERE
-                p.codigo ILIKE %s OR
-                COALESCE(p.dni, '') ILIKE %s OR
-                p.nombre_paciente ILIKE %s OR
-                COALESCE(p.departamento, '') ILIKE %s OR
-                COALESCE(p.provincia, '') ILIKE %s OR
-                COALESCE(p.distrito, '') ILIKE %s
-            ORDER BY ev.created_at DESC;
-            """,
-            tuple([f"%{query_text}%"] * 6),
-        )
-    else:
-        evaluations = fetch_all(
-            """
-            SELECT
-                ev.id,
-                ev.score,
-                ev.nivel_autismo,
-                ev.created_at,
-                p.codigo,
-                p.nombre_paciente,
-                p.dni,
-                p.edad,
-                p.departamento,
-                p.provincia,
-                p.distrito
-            FROM evaluaciones ev
-            INNER JOIN pacientes p ON p.id = ev.paciente_id
-            ORDER BY ev.created_at DESC
-            LIMIT 40;
-            """
-        )
+    evaluations = fetch_dashboard_evaluations(query_text=query_text, limit=None if query_text else 40)
 
     stats = fetch_one(
         """
@@ -1192,6 +1288,53 @@ def specialist_dashboard():
         stats=stats or {},
         level_distribution=level_distribution,
         query_text=query_text,
+    )
+
+
+@app.route("/especialista/evaluaciones/excel")
+@login_required("especialista")
+def download_specialist_evaluations_excel():
+    query_text = request.args.get("q", "").strip()
+    evaluations = fetch_dashboard_evaluations(query_text=query_text, limit=None if query_text else 40)
+    headers = [
+        "Codigo",
+        "Paciente",
+        "DNI",
+        "Edad",
+        "Departamento",
+        "Provincia",
+        "Distrito",
+        "Nivel",
+        "Score",
+        "Fecha",
+    ]
+    rows = []
+    for item in evaluations:
+        created_at = item.get("created_at")
+        rows.append(
+            [
+                item.get("codigo") or "",
+                item.get("nombre_paciente") or "",
+                item.get("dni") or "",
+                item.get("edad") or "",
+                item.get("departamento") or "",
+                item.get("provincia") or "",
+                item.get("distrito") or "",
+                item.get("nivel_autismo") or "",
+                item.get("score") if item.get("score") is not None else "",
+                created_at.strftime("%Y-%m-%d %H:%M") if created_at else "",
+            ]
+        )
+
+    date_suffix = datetime.now().strftime("%Y%m%d-%H%M")
+    filename = f"evaluaciones-especialista-{date_suffix}.xlsx"
+    output = build_xlsx(rows, headers)
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
 

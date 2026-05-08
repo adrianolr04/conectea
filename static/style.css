@@ -89,6 +89,10 @@ a {
     padding: 36px;
 }
 
+.specialist-container {
+    width: min(1440px, calc(100% - 32px));
+}
+
 .app-topbar {
     display: flex;
     justify-content: space-between;
@@ -875,12 +879,17 @@ input[type="radio"]:checked + .radio-label {
     background: rgba(255, 255, 255, 0.75);
 }
 
+.specialist-table {
+    min-width: 1120px;
+}
+
 .data-table th,
 .data-table td {
     padding: 14px 16px;
     text-align: left;
     border-bottom: 1px solid rgba(115, 93, 63, 0.1);
     font-size: 0.95rem;
+    vertical-align: middle;
 }
 
 .data-table th {
@@ -896,12 +905,20 @@ input[type="radio"]:checked + .radio-label {
 .table-link {
     color: var(--brand-dark);
     font-weight: 800;
+    white-space: nowrap;
 }
 
 .search-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 14px;
+    align-items: center;
+}
+
+.export-btn {
+    background: rgba(47, 108, 103, 0.1);
+    color: var(--accent);
+    border-color: rgba(47, 108, 103, 0.2);
 }
 
 .distribution-header {
