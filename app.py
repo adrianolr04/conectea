@@ -86,6 +86,7 @@ def get_connection():
 
 def ensure_schema():
     conn = get_connection()
+    cur = None
     try:
         cur = conn.cursor()
         cur.execute(
@@ -155,17 +156,19 @@ def ensure_schema():
                 nota TEXT NOT NULL,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
-
-            CREATE INDEX IF NOT EXISTS idx_evaluaciones_paciente_id ON evaluaciones(paciente_id);
-            CREATE INDEX IF NOT EXISTS idx_pacientes_codigo ON pacientes(codigo);
-            CREATE INDEX IF NOT EXISTS idx_usuarios_correo ON usuarios(correo);
             """
         )
         schema_updates = [
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nombre_completo VARCHAR(150);",
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS correo VARCHAR(150);",
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash TEXT;",
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol VARCHAR(20);",
             "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;",
+            "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;",
             "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS codigo VARCHAR(30);",
             "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS nombre_padre VARCHAR(150);",
             "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS nombre_madre VARCHAR(150);",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS nombre_paciente VARCHAR(150);",
             "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS dni VARCHAR(20);",
             "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS departamento VARCHAR(120);",
             "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS provincia VARCHAR(120);",
@@ -174,13 +177,35 @@ def ensure_schema():
             "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS correo VARCHAR(150);",
             "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS sexo VARCHAR(10);",
             "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS edad INT;",
+            "ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;",
+            "ALTER TABLE evaluaciones ADD COLUMN IF NOT EXISTS paciente_id INT;",
+            "ALTER TABLE evaluaciones ADD COLUMN IF NOT EXISTS score NUMERIC(5, 2);",
             "ALTER TABLE evaluaciones ADD COLUMN IF NOT EXISTS score_pct NUMERIC(5, 2);",
             "ALTER TABLE evaluaciones ADD COLUMN IF NOT EXISTS nivel_autismo VARCHAR(80);",
             "ALTER TABLE evaluaciones ADD COLUMN IF NOT EXISTS probabilidades_json TEXT;",
             "ALTER TABLE evaluaciones ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;",
+            "ALTER TABLE respuestas_evaluacion ADD COLUMN IF NOT EXISTS evaluacion_id INT;",
+            "ALTER TABLE notas_especialista ADD COLUMN IF NOT EXISTS evaluacion_id INT;",
+            "ALTER TABLE notas_especialista ADD COLUMN IF NOT EXISTS especialista_id INT;",
+            "ALTER TABLE notas_especialista ADD COLUMN IF NOT EXISTS nota TEXT;",
+            "ALTER TABLE notas_especialista ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;",
         ]
         for statement in schema_updates:
             cur.execute(statement)
+
+        for index in range(1, 41):
+            cur.execute(f"ALTER TABLE respuestas_evaluacion ADD COLUMN IF NOT EXISTS q{index} SMALLINT;")
+
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_evaluaciones_paciente_id ON evaluaciones(paciente_id);")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_pacientes_codigo ON pacientes(codigo);")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_usuarios_correo ON usuarios(correo);")
+        cur.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_respuestas_evaluacion_evaluacion_id
+            ON respuestas_evaluacion(evaluacion_id)
+            WHERE evaluacion_id IS NOT NULL;
+            """
+        )
 
         cur.execute("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1;")
         admin = cur.fetchone()
@@ -202,8 +227,13 @@ def ensure_schema():
             )
 
         conn.commit()
+    except Exception:
+        conn.rollback()
+        app.logger.exception("Error initializing database schema")
+        raise
     finally:
-        cur.close()
+        if cur:
+            cur.close()
         conn.close()
 
 
@@ -978,6 +1008,7 @@ def registro():
         except Exception as exc:
             if conn:
                 conn.rollback()
+            app.logger.exception("Error saving patient registration")
             flash(f"No se pudo guardar el registro: {exc}", "error")
             return render_template(
                 "registro.html",
@@ -1092,6 +1123,7 @@ def procesar():
         except Exception:
             if conn:
                 conn.rollback()
+            app.logger.exception("Error saving questionnaire evaluation")
             raise
         finally:
             if cur:
@@ -1116,6 +1148,7 @@ def procesar():
         return redirect(url_for("resultado"))
 
     except Exception as exc:
+        app.logger.exception("Error processing questionnaire")
         flash(str(exc), "error")
         return render_template("index.html", error=str(exc), question_items=QUESTION_ITEMS)
 
@@ -1143,7 +1176,11 @@ def descargar_pdf():
     if not data_eval:
         return redirect(url_for("formulario"))
 
-    pdf_bytes = build_pdf_document(data_eval, datos_personales, datos_nino, datetime.now())
+    try:
+        pdf_bytes = build_pdf_document(data_eval, datos_personales, datos_nino, datetime.now())
+    except Exception:
+        app.logger.exception("Error generating session PDF")
+        raise
 
     response = make_response(pdf_bytes)
     response.headers.set("Content-Type", "application/pdf")
