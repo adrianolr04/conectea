@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime
 from functools import wraps
+from urllib.parse import urlparse
 
 import psycopg2
 from fpdf import FPDF
@@ -23,66 +24,125 @@ from miterap_model import MiterapModel
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_secret_key")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
+DATABASE_URL = os.getenv("DATABASE_URL")
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_NAME = os.getenv("DB_NAME", "CONECTEA")
 DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "adriano13")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 DB_PORT = int(os.getenv("DB_PORT", 5432))
 
 DEFAULT_ADMIN_NAME = os.getenv("ADMIN_NAME", "Administrador")
-DEFAULT_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@conectea.local")
-DEFAULT_ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+DEFAULT_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
+DEFAULT_ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+
+LOCATION_OPTIONS = {
+    "Lima": [
+        "Ancon",
+        "Ate",
+        "Barranco",
+        "Brena",
+        "Carabayllo",
+        "Chaclacayo",
+        "Chorrillos",
+        "Cieneguilla",
+        "Comas",
+        "El Agustino",
+        "Independencia",
+        "Jesus Maria",
+        "La Molina",
+        "La Victoria",
+        "Lima",
+        "Lince",
+        "Los Olivos",
+        "Lurigancho",
+        "Lurin",
+        "Magdalena del Mar",
+        "Miraflores",
+        "Pachacamac",
+        "Pucusana",
+        "Pueblo Libre",
+        "Puente Piedra",
+        "Punta Hermosa",
+        "Punta Negra",
+        "Rimac",
+        "San Bartolo",
+        "San Borja",
+        "San Isidro",
+        "San Juan de Lurigancho",
+        "San Juan de Miraflores",
+        "San Luis",
+        "San Martin de Porres",
+        "San Miguel",
+        "Santa Anita",
+        "Santa Maria del Mar",
+        "Santa Rosa",
+        "Santiago de Surco",
+        "Surquillo",
+        "Villa El Salvador",
+        "Villa Maria del Triunfo",
+    ],
+    "Callao": [
+        "Bellavista",
+        "Callao",
+        "Carmen de la Legua Reynoso",
+        "La Perla",
+        "La Punta",
+        "Mi Peru",
+        "Ventanilla",
+    ],
+    "Canete": [
+        "Asia",
+        "Calango",
+        "Cerro Azul",
+        "Chilca",
+        "Imperial",
+        "Mala",
+        "Nuevo Imperial",
+        "San Vicente de Canete",
+    ],
+    "Huaral": [
+        "Aucallama",
+        "Chancay",
+        "Huaral",
+        "Ihuari",
+        "Sumbilca",
+    ],
+    "Huaura": [
+        "Caleta de Carquin",
+        "Huacho",
+        "Hualmay",
+        "Huaura",
+        "Santa Maria",
+        "Vegueta",
+    ],
+}
 
 SCHEMA_READY = False
 
 modelo = MiterapModel(artifacts_dir="artifacts")
 
-QUESTION_ITEMS = [
-    {"number": 1, "text": "¿Es capaz de hablar usando frases u oraciones cortas?", "example": "Ejemplo: dice 'quiero agua' o 'vamos al parque' usando frases breves, no solo palabras sueltas."},
-    {"number": 2, "text": "¿Tiene conversaciones con él o con ella, en la que participen ambos y se vayan turnando o vayan construyendo sobre lo ya dicho?", "example": "Ejemplo: usted pregunta algo, responde y luego continúa el intercambio sin cortar la conversación."},
-    {"number": 3, "text": "¿Usa algunas veces frases raras o dice la misma cosa una y otra vez y casi exactamente de la misma manera ya sean frases que ha oído a otras personas o frases que se inventa?", "example": "Ejemplo: repite una frase de un video o programa muchas veces aunque no encaje con la situación."},
-    {"number": 4, "text": "¿Hace en ocasiones preguntas o afirmaciones socialmente inconvenientes, tales como preguntas indiscretas o comentarios personales en momentos inoportunos?", "example": "Ejemplo: hace comentarios muy personales en público sin notar que pueden incomodar."},
-    {"number": 5, "text": "¿Confunde a veces los pronombres diciendo, por ejemplo 'tú' o 'ella' en lugar de 'yo'?", "example": "Ejemplo: dice 'tú quieres agua' cuando en realidad habla de sí mismo."},
-    {"number": 6, "text": "¿Usa alguna vez palabras que ha inventado, expresa algunas cosas de una manera rara o indirecta o usa formas metafóricas para referirse a las cosas, como por ejemplo, decir 'lluvia caliente' en lugar de 'vapor'?", "example": "Ejemplo: nombra objetos con palabras inventadas o descripciones poco habituales que solo algunos entienden."},
-    {"number": 7, "text": "¿Dice en ocasiones la misma cosa una y otra vez y exactamente de la misma manera o insiste para que usted diga las mismas cosas una y otra vez?", "example": "Ejemplo: pide repetir la misma frase exacta varias veces seguidas."},
-    {"number": 8, "text": "¿Insiste alguna vez en hacer ciertas cosas de una manera o en un orden muy particular o hay determinados 'rituales' que pretende que usted respete?", "example": "Ejemplo: se altera si cambian el orden de su rutina o si un objeto no está donde espera."},
-    {"number": 9, "text": "¿Piensa usted que por lo general su expresión facial se puede considerar adecuada a la situación del momento?", "example": "Ejemplo: muestra alegría, tristeza o sorpresa de forma acorde con lo que está pasando."},
-    {"number": 10, "text": "¿Usa alguna vez la mano de usted como una herramienta o como si fuera parte de su propio cuerpo, por ejemplo, apuntando con su dedo o poniendo la mano de usted en el tirador de la puerta para lograr que la abriese?", "example": "Ejemplo: toma su mano y la coloca sobre algo para que usted haga la acción por él."},
-    {"number": 11, "text": "¿Muestra alguna vez interés por ciertas cosas que le preocupan mucho y que a otras personas les parecen extrañas, por ejemplo, semáforos, tuberías de desagüe u horarios de transporte?", "example": "Ejemplo: pasa mucho tiempo pendiente de un tema muy específico poco común para su edad."},
-    {"number": 12, "text": "¿Se interesa algunas veces más en las piezas de un juguete o de un objeto, por ejemplo dar vueltas a las ruedas de un coche, que en usar el objeto de acuerdo a su finalidad?", "example": "Ejemplo: gira las ruedas del carro repetidamente en vez de jugar con el carro completo."},
-    {"number": 13, "text": "¿Muestra un interés especial por algún tema, por ejemplo trenes o dinosaurios, que aun siendo normal a su edad y en su ambiente, parece fuera de lo normal por su intensidad?", "example": "Ejemplo: habla del mismo tema con gran detalle y mucha frecuencia durante el día."},
-    {"number": 14, "text": "¿Muestra a veces interés excepcional por la vista, el tacto, el sonido, el sabor o el olor de las cosas o las personas?", "example": "Ejemplo: busca, evita o reacciona mucho ante texturas, sonidos, luces u olores."},
-    {"number": 15, "text": "¿Realiza en ocasiones gestos o movimientos extraños con las manos o los dedos, como agitar o mover sus dedos delante de sus ojos?", "example": "Ejemplo: mueve las manos frente a la cara o mira sus dedos mientras los agita."},
-    {"number": 16, "text": "¿Realiza en ocasiones movimientos complicados de su cuerpo, como dar vueltas, retorcerse o dar saltos repetidos en el sitio?", "example": "Ejemplo: gira sobre sí mismo o salta muchas veces seguidas sin una actividad concreta."},
-    {"number": 17, "text": "¿Se hace daño a propósito alguna vez, por ejemplo, mordiéndose un brazo o golpeándose la cabeza?", "example": "Ejemplo: cuando se frustra, se muerde, se golpea o se lastima de manera intencional."},
-    {"number": 18, "text": "¿Tiene algún objeto que necesita llevar consigo, aparte de un muñeco o una manta?", "example": "Ejemplo: insiste en llevar siempre una tapa, cuerda, piedra u otro objeto específico."},
-    {"number": 19, "text": "¿Tiene un amigo íntimo o alguna amistad en particular?", "example": "Ejemplo: busca con frecuencia a un niño específico para jugar o compartir."},
-    {"number": 20, "text": "¿Habla con usted alguna vez solo para ser simpático y amable y no para conseguir algo?", "example": "Ejemplo: se acerca a conversar o contar algo sin pedir ayuda ni objetos."},
-    {"number": 21, "text": "¿Imita alguna vez espontáneamente a otras personas o lo que hacen, como pasar la aspiradora, cocinar o arreglar cosas?", "example": "Ejemplo: copia actividades de los adultos por iniciativa propia durante el juego."},
-    {"number": 22, "text": "¿Señala alguna vez espontáneamente las cosas que ve solo para mostrárselas a usted y no porque quiera obtenerlas?", "example": "Ejemplo: apunta a un avión o un perro solo para compartir lo que vio."},
-    {"number": 23, "text": "¿Hace alguna vez gestos para indicarle lo que quiere, aparte de señalar el objeto o tirarle a usted de la mano?", "example": "Ejemplo: hace señas con la mano para pedir ayuda, acercarse o cargarlo."},
-    {"number": 24, "text": "¿Asiente con la cabeza para decir sí?", "example": "Ejemplo: mueve la cabeza afirmativamente cuando acepta algo."},
-    {"number": 25, "text": "¿Niega con la cabeza para decir no?", "example": "Ejemplo: mueve la cabeza de lado a lado para rechazar comida, juego o ayuda."},
-    {"number": 26, "text": "Al hablarle o hacer algo con usted, ¿suele mirarle directamente a la cara?", "example": "Ejemplo: mientras interactúan, suele buscar su rostro o sus ojos por algunos instantes."},
-    {"number": 27, "text": "¿Devuelve la sonrisa cuando alguien le sonríe?", "example": "Ejemplo: si usted le sonríe, normalmente responde sonriendo también."},
-    {"number": 28, "text": "¿Le muestra a usted cosas que le interesan a fin de captar su atención?", "example": "Ejemplo: le enseña un dibujo o un juguete para que usted lo mire con él."},
-    {"number": 29, "text": "¿Se ofrece alguna vez a compartir cosas con usted, aparte de alimentos?", "example": "Ejemplo: le ofrece un juguete u objeto que le gusta sin que usted se lo pida."},
-    {"number": 30, "text": "En su opinión, ¿quiere alguna vez que usted participe en sus juegos?", "example": "Ejemplo: lo invita a jugar, le da un rol o le acerca juguetes para hacerlo juntos."},
-    {"number": 31, "text": "¿Intenta alguna vez consolarle si ve que usted está triste o se ha hecho daño?", "example": "Ejemplo: se acerca, pregunta qué pasó o intenta ayudar cuando lo ve mal."},
-    {"number": 32, "text": "Cuando quiere algo o buscaba ayuda, ¿le mira y hace gestos con sonidos o palabras para captar su atención?", "example": "Ejemplo: combina mirada, gesto y voz para pedir ayuda con algo."},
-    {"number": 33, "text": "¿Muestra una variedad normal de expresiones faciales?", "example": "Ejemplo: cambia de expresión según esté alegre, molesto, sorprendido o triste."},
-    {"number": 34, "text": "¿Alguna vez se une a juegos de grupo y trata de imitar las acciones y juegos sociales que se están haciendo?", "example": "Ejemplo: observa a otros niños jugando y se suma intentando seguir lo que hacen."},
-    {"number": 35, "text": "¿Juega a disfrazarse, a simular que es otra persona o a juegos de ficción en general?", "example": "Ejemplo: hace como si cocinara, fuera doctor o interpretara personajes."},
-    {"number": 36, "text": "¿Muestra interés por niños de su edad a los que no conoce?", "example": "Ejemplo: mira, se acerca o intenta interactuar con niños nuevos en el parque o colegio."},
-    {"number": 37, "text": "¿Responde positivamente cuando se le acerca otro niño?", "example": "Ejemplo: responde al saludo, acepta jugar o continúa la interacción con agrado."},
-    {"number": 38, "text": "Si usted entra a un cuarto y empieza a hablarle sin decir su nombre, ¿por lo general levanta la vista y le presta atención?", "example": "Ejemplo: al escuchar su voz, deja un momento lo que hace y mira para atender."},
-    {"number": 39, "text": "¿Participa alguna vez con otros niños en juegos de ficción, de tal manera que quede claro que unos y otros comprenden en qué consiste el juego?", "example": "Ejemplo: juega a la casita, a la tienda o a personajes con una idea compartida."},
-    {"number": 40, "text": "¿Participaba activamente en juegos que requieren colaborar con otros niños en grupo, como jugar al escondite o a la pelota?", "example": "Ejemplo: toma turnos, sigue reglas simples y coopera con otros niños durante el juego."},
-]
-
 
 def get_connection():
+    if DATABASE_URL:
+        normalized_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        parsed = urlparse(normalized_url)
+        connect_kwargs = {
+            "host": parsed.hostname,
+            "dbname": parsed.path.lstrip("/"),
+            "user": parsed.username,
+            "password": parsed.password,
+            "port": parsed.port or 5432,
+        }
+
+        ssl_mode = os.getenv("DB_SSLMODE")
+        if ssl_mode:
+            connect_kwargs["sslmode"] = ssl_mode
+
+        return psycopg2.connect(**connect_kwargs)
+
     return psycopg2.connect(
         host=DB_HOST,
         dbname=DB_NAME,
@@ -121,7 +181,9 @@ def ensure_schema():
                 codigo VARCHAR(30) UNIQUE,
                 nombre_padre VARCHAR(150),
                 nombre_madre VARCHAR(150),
+                dni VARCHAR(20),
                 nombre_paciente VARCHAR(150) NOT NULL,
+                provincia VARCHAR(120),
                 distrito VARCHAR(120),
                 telefono VARCHAR(30),
                 correo VARCHAR(150),
@@ -166,10 +228,16 @@ def ensure_schema():
             CREATE INDEX IF NOT EXISTS idx_usuarios_correo ON usuarios(correo);
             """
         )
+        cur.execute("ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS dni VARCHAR(20);")
+        cur.execute("ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS provincia VARCHAR(120);")
 
         cur.execute("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1;")
         admin = cur.fetchone()
         if not admin:
+            if not DEFAULT_ADMIN_EMAIL or not DEFAULT_ADMIN_PASSWORD:
+                raise RuntimeError(
+                    "Configura ADMIN_EMAIL y ADMIN_PASSWORD para crear el usuario administrador inicial."
+                )
             cur.execute(
                 """
                 INSERT INTO usuarios (nombre_completo, correo, password_hash, rol)
@@ -281,6 +349,8 @@ def build_evaluation_detail(evaluacion_id):
             p.nombre_paciente,
             p.nombre_padre,
             p.nombre_madre,
+            p.dni,
+            p.provincia,
             p.distrito,
             p.telefono,
             p.correo,
@@ -405,52 +475,63 @@ def pdf_safe(text):
     return value.encode("latin-1", "replace").decode("latin-1")
 
 
-def add_pdf_header(pdf, logo_path, codigo):
-    pdf.set_fill_color(247, 245, 241)
-    pdf.rect(0, 0, 210, 38, style="F")
-    pdf.set_draw_color(225, 216, 206)
-    pdf.line(10, 38, 200, 38)
+class ReportPDF(FPDF):
+    def __init__(self, logo_path=None, codigo="SIN-CODIGO"):
+        super().__init__()
+        self.logo_path = logo_path
+        self.codigo = codigo or "SIN-CODIGO"
 
-    if logo_path and os.path.exists(logo_path):
-        pdf.image(logo_path, x=12, y=8, w=26)
+    def header(self):
+        self.set_fill_color(248, 244, 238)
+        self.rect(0, 0, 210, 28, style="F")
+        self.set_fill_color(214, 120, 84)
+        self.rect(0, 0, 210, 4, style="F")
+        self.set_draw_color(229, 220, 210)
+        self.line(self.l_margin, 28, self.w - self.r_margin, 28)
 
-    pdf.set_xy(44, 9)
-    pdf.set_text_color(41, 51, 65)
-    pdf.set_font("Helvetica", "B", 18)
-    pdf.cell(0, 8, pdf_safe("Reporte de Evaluación"), new_x="LMARGIN", new_y="NEXT")
-    pdf.set_x(44)
-    pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(95, 105, 118)
-    pdf.cell(0, 5, pdf_safe("CONECTEA"), new_x="LMARGIN", new_y="NEXT")
+        if self.logo_path and os.path.exists(self.logo_path):
+            self.image(self.logo_path, x=self.l_margin, y=8, w=16)
 
-    pdf.set_xy(150, 11)
-    pdf.set_font("Helvetica", "B", 9)
-    pdf.set_text_color(240, 124, 86)
-    pdf.cell(44, 5, pdf_safe("CÓDIGO"), align="R", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_x(150)
-    pdf.set_font("Helvetica", "", 11)
-    pdf.set_text_color(41, 51, 65)
-    pdf.cell(44, 5, pdf_safe(codigo), align="R", new_x="LMARGIN", new_y="NEXT")
+        self.set_xy(44, 9)
+        self.set_text_color(41, 51, 65)
+        self.set_font("Helvetica", "B", 18)
+        self.cell(0, 8, pdf_safe("Reporte de Evaluacion"), new_x="LMARGIN", new_y="NEXT")
+        self.set_x(44)
+        self.set_font("Helvetica", "", 10)
+        self.set_text_color(95, 105, 118)
+        self.cell(0, 5, pdf_safe("CONECTEA"), new_x="LMARGIN", new_y="NEXT")
 
-    pdf.set_y(46)
-    pdf.set_text_color(31, 41, 55)
+        self.set_xy(150, 11)
+        self.set_font("Helvetica", "B", 9)
+        self.set_text_color(240, 124, 86)
+        self.cell(44, 5, pdf_safe("CODIGO"), align="R", new_x="LMARGIN", new_y="NEXT")
+        self.set_x(150)
+        self.set_font("Helvetica", "", 11)
+        self.set_text_color(41, 51, 65)
+        self.cell(44, 5, pdf_safe(self.codigo), align="R", new_x="LMARGIN", new_y="NEXT")
+
+        self.set_y(46)
+        self.set_text_color(31, 41, 55)
 
 
 def add_pdf_section_title(pdf, title):
-    pdf.ln(5)
-    pdf.set_draw_color(230, 223, 214)
-    pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
-    pdf.ln(3)
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.set_text_color(80, 63, 49)
-    pdf.cell(0, 7, pdf_safe(title), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+    y = pdf.get_y()
+    pdf.set_fill_color(255, 248, 242)
+    pdf.set_draw_color(235, 223, 211)
+    pdf.rect(pdf.l_margin, y, pdf.w - pdf.l_margin - pdf.r_margin, 9, style="DF")
+    pdf.set_xy(pdf.l_margin + 4, y + 1.4)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_text_color(103, 72, 50)
+    pdf.cell(0, 6, pdf_safe(title), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
     pdf.set_text_color(31, 41, 55)
 
 
 def add_pdf_info_grid(pdf, items, columns=2):
-    gap = 8
+    gap = 6
     width = (pdf.w - pdf.l_margin - pdf.r_margin - gap * (columns - 1)) / columns
-    row_height = 14
+    row_height = 16
 
     for start in range(0, len(items), columns):
         row_items = items[start:start + columns]
@@ -460,20 +541,22 @@ def add_pdf_info_grid(pdf, items, columns=2):
         for column, (label, value) in enumerate(row_items):
             x = pdf.l_margin + column * (width + gap)
             text_value = pdf_safe(value) or "-"
-            extra_lines = max(1, int(len(text_value) / 34) + 1)
-            box_height = max(row_height, 8 + extra_lines * 4)
+            extra_lines = max(1, int(len(text_value) / 30) + 1)
+            box_height = max(row_height, 9 + extra_lines * 4.6)
             max_height = max(max_height, box_height)
 
-            pdf.set_fill_color(251, 249, 246)
-            pdf.set_draw_color(228, 222, 214)
+            pdf.set_fill_color(252, 250, 247)
+            pdf.set_draw_color(231, 225, 217)
             pdf.rect(x, y, width, box_height, style="DF")
+            pdf.set_fill_color(240, 234, 227)
+            pdf.rect(x, y, width, 5.5, style="F")
 
-            pdf.set_xy(x + 3, y + 2.5)
+            pdf.set_xy(x + 3, y + 1.1)
             pdf.set_font("Helvetica", "B", 8)
-            pdf.set_text_color(121, 112, 101)
+            pdf.set_text_color(121, 100, 84)
             pdf.cell(width - 6, 4, pdf_safe(label.upper()))
 
-            pdf.set_xy(x + 3, y + 7)
+            pdf.set_xy(x + 3, y + 7.8)
             pdf.set_font("Helvetica", "", 10)
             pdf.set_text_color(31, 41, 55)
             pdf.multi_cell(width - 6, 4.3, text_value)
@@ -481,45 +564,38 @@ def add_pdf_info_grid(pdf, items, columns=2):
         pdf.set_y(y + max_height + 4)
 
 
+def probability_color(label):
+    value = (label or "").lower()
+    if "leve" in value:
+        return (222, 181, 82)
+    if "moderado" in value:
+        return (223, 136, 67)
+    if "severo" in value or "alto" in value:
+        return (196, 89, 69)
+    return (108, 146, 115)
+
+
 def add_pdf_probabilities(pdf, probabilities):
     if not probabilities:
         pdf.set_font("Helvetica", "", 10)
-        pdf.cell(0, 7, "No hay probabilidades disponibles.", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 7, pdf_safe("No hay probabilidades disponibles."), new_x="LMARGIN", new_y="NEXT")
         return
 
-    color_steps = [
-        (46, 125, 91),
-        (201, 138, 26),
-        (201, 108, 74),
-        (211, 87, 69),
-    ]
-    usable_width = pdf.w - pdf.l_margin - pdf.r_margin
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.set_fill_color(242, 237, 231)
+    pdf.set_text_color(80, 63, 49)
+    pdf.cell(110, 8, "Nivel", border=1, fill=True)
+    pdf.cell(0, 8, "Probabilidad", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
 
-    for index, (nivel, prob) in enumerate(probabilities.items()):
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(31, 41, 55)
+    fill = False
+    for nivel, prob in probabilities.items():
         pct = max(0, min(float(prob) * 100, 100))
-        if pdf.get_y() > 258:
-            pdf.add_page()
-
-        r, g, b = color_steps[index % len(color_steps)]
-        pdf.set_font("Helvetica", "B", 10)
-        pdf.set_text_color(41, 51, 65)
-        pdf.cell(0, 6, pdf_safe(nivel), new_x="LMARGIN", new_y="NEXT")
-
-        pdf.set_font("Helvetica", "", 9)
-        pdf.set_text_color(95, 105, 118)
-        pdf.cell(0, 4, pdf_safe(f"{pct:.1f}% estimado"), new_x="LMARGIN", new_y="NEXT")
-
-        bar_y = pdf.get_y() + 2
-        pdf.set_fill_color(244, 239, 231)
-        pdf.set_draw_color(228, 222, 214)
-        pdf.rect(pdf.l_margin, bar_y, usable_width, 7, style="DF")
-
-        fill_width = usable_width * (pct / 100)
-        if fill_width > 0:
-            pdf.set_fill_color(r, g, b)
-            pdf.rect(pdf.l_margin, bar_y, fill_width, 7, style="F")
-
-        pdf.set_y(bar_y + 11)
+        pdf.set_fill_color(251, 249, 246 if fill else 255)
+        pdf.cell(110, 8, pdf_safe(nivel), border=1, fill=fill)
+        pdf.cell(0, 8, pdf_safe(f"{pct:.1f}%"), border=1, fill=fill, new_x="LMARGIN", new_y="NEXT")
+        fill = not fill
 
 
 def add_pdf_responses_table(pdf, respuestas):
@@ -542,7 +618,7 @@ def add_pdf_responses_table(pdf, respuestas):
         row = respuestas[start:start + 4]
         pdf.set_fill_color(251, 249, 246 if fill else 255)
         for offset, value in enumerate(row):
-            respuesta = "Sí" if value == 1 else "No"
+            respuesta = "Si" if value == 1 else "No"
             pdf.cell(24, 7, pdf_safe(f"Q{start + offset + 1}"), border=1, align="C", fill=fill)
             pdf.cell(20, 7, pdf_safe(respuesta), border=1, align="C", fill=fill)
         for _ in range(4 - len(row)):
@@ -556,7 +632,7 @@ def build_pdf_document(data_eval, datos_personales, datos_nino, generated_at=Non
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.set_title("Reporte de Evaluación - CONECTEA")
+    pdf.set_title("Reporte de Evaluacion - CONECTEA")
     pdf.set_author("CONECTEA")
 
     logo_path = os.path.join(app.root_path, "static", "images", "logo.png")
@@ -564,18 +640,25 @@ def build_pdf_document(data_eval, datos_personales, datos_nino, generated_at=Non
     if datos_personales:
         codigo = datos_personales.get("codigo", "")
 
-    add_pdf_header(pdf, logo_path, codigo or "SIN-CODIGO")
+    pdf = ReportPDF(logo_path=logo_path, codigo=codigo or "SIN-CODIGO")
+    pdf.set_margins(12, 12, 12)
+    pdf.set_auto_page_break(auto=True, margin=18)
+    pdf.alias_nb_pages()
+    pdf.add_page()
+    pdf.set_title("Reporte de Evaluación - CONECTEA")
+    pdf.set_author("CONECTEA")
 
     pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(95, 105, 118)
+    pdf.set_text_color(88, 98, 110)
     pdf.multi_cell(
         0,
         5,
         pdf_safe(
-            "Documento generado a partir de la evaluación completada en CONECTEA. "
+            "Documento generado a partir de la evaluacion completada en CONECTEA. "
             "Presenta un resumen legible para consulta y seguimiento."
         ),
     )
+    pdf.ln(2)
 
     if datos_personales:
         add_pdf_section_title(pdf, "Datos del apoderado")
@@ -585,6 +668,8 @@ def build_pdf_document(data_eval, datos_personales, datos_nino, generated_at=Non
                 ("Nombre del padre", datos_personales.get("nombre_padre", "-") or "-"),
                 ("Nombre de la madre", datos_personales.get("nombre_madre", "-") or "-"),
                 ("Paciente", datos_personales.get("nombre_paciente", "-") or "-"),
+                ("DNI", datos_personales.get("dni", "-") or "-"),
+                ("Provincia", datos_personales.get("provincia", "-") or "-"),
                 ("Distrito", datos_personales.get("distrito", "-") or "-"),
                 ("Teléfono", datos_personales.get("telefono", "-") or "-"),
                 ("Correo", datos_personales.get("correo", "-") or "-"),
@@ -603,25 +688,7 @@ def build_pdf_document(data_eval, datos_personales, datos_nino, generated_at=Non
 
     add_pdf_section_title(pdf, "Resumen del resultado")
     pdf_date = generated_at or datetime.now()
-    pdf.set_fill_color(250, 247, 243)
-    pdf.set_draw_color(228, 222, 214)
-    y = pdf.get_y()
-    pdf.rect(pdf.l_margin, y, pdf.w - pdf.l_margin - pdf.r_margin, 23, style="DF")
-    pdf.set_xy(pdf.l_margin + 4, y + 4)
-    pdf.set_font("Helvetica", "B", 18)
-    pdf.set_text_color(41, 51, 65)
-    pdf.cell(34, 8, pdf_safe(str(data_eval["score"])))
-    pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(95, 105, 118)
-    pdf.cell(26, 8, pdf_safe("/ 40"))
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.set_text_color(80, 63, 49)
-    pdf.cell(0, 8, pdf_safe(data_eval["clase_predicha_texto"]), new_x="LMARGIN", new_y="NEXT")
-    pdf.set_x(pdf.l_margin + 4)
-    pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(31, 41, 55)
-    pdf.cell(0, 5, pdf_safe(f"Porcentaje: {round(data_eval['score_pct'], 1)}%  |  Fecha: {pdf_date.strftime('%Y-%m-%d %H:%M')}"), new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(12)
+    add_pdf_summary_card(pdf, data_eval, pdf_date)
 
     add_pdf_section_title(pdf, "Probabilidades por nivel")
     add_pdf_probabilities(pdf, data_eval.get("probabilidades", {}))
@@ -658,7 +725,9 @@ def build_pdf_payload_from_evaluation(evaluation):
             "codigo": evaluation.get("codigo", ""),
             "nombre_padre": evaluation.get("nombre_padre", ""),
             "nombre_madre": evaluation.get("nombre_madre", ""),
+            "dni": evaluation.get("dni", ""),
             "nombre_paciente": evaluation.get("nombre_paciente", ""),
+            "provincia": evaluation.get("provincia", ""),
             "distrito": evaluation.get("distrito", ""),
             "telefono": evaluation.get("telefono", ""),
             "correo": evaluation.get("correo", ""),
@@ -679,22 +748,47 @@ def home():
 
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
-    session.pop("_flashes", None)
-
     if request.method == "POST":
         datos = {
             "nombre_padre": request.form.get("nombre_padre", "").strip(),
             "nombre_madre": request.form.get("nombre_madre", "").strip(),
+            "dni": request.form.get("dni", "").strip(),
             "nombre_paciente": request.form.get("nombre_paciente", "").strip(),
+            "provincia": request.form.get("provincia", "").strip(),
             "distrito": request.form.get("distrito", "").strip(),
             "telefono": request.form.get("telefono", "").strip(),
             "correo": request.form.get("correo", "").strip(),
         }
 
-        if not datos["nombre_paciente"] or not datos["distrito"] or not datos["telefono"] or not datos["correo"]:
+        if (
+            not datos["dni"]
+            or not datos["nombre_paciente"]
+            or not datos["provincia"]
+            or not datos["distrito"]
+            or not datos["telefono"]
+            or not datos["correo"]
+        ):
+            flash("Completa todos los campos obligatorios antes de continuar.", "error")
             return render_template(
                 "registro.html",
-                error="Completa todos los campos obligatorios antes de continuar.",
+                location_options=LOCATION_OPTIONS,
+                form_data=datos,
+            )
+
+        if not datos["dni"].isdigit() or len(datos["dni"]) != 8:
+            flash("El DNI del paciente debe tener 8 digitos.", "error")
+            return render_template(
+                "registro.html",
+                location_options=LOCATION_OPTIONS,
+                form_data=datos,
+            )
+
+        if datos["provincia"] not in LOCATION_OPTIONS or datos["distrito"] not in LOCATION_OPTIONS[datos["provincia"]]:
+            flash("Selecciona una provincia y distrito validos.", "error")
+            return render_template(
+                "registro.html",
+                location_options=LOCATION_OPTIONS,
+                form_data=datos,
             )
 
         conn = get_connection()
@@ -705,18 +799,22 @@ def registro():
                 INSERT INTO pacientes (
                     nombre_padre,
                     nombre_madre,
+                    dni,
                     nombre_paciente,
+                    provincia,
                     distrito,
                     telefono,
                     correo
                 )
-                VALUES (%s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id;
                 """,
                 (
                     datos["nombre_padre"],
                     datos["nombre_madre"],
+                    datos["dni"],
                     datos["nombre_paciente"],
+                    datos["provincia"],
                     datos["distrito"],
                     datos["telefono"],
                     datos["correo"],
@@ -740,9 +838,10 @@ def registro():
         datos["paciente_id"] = paciente_id
         datos["codigo"] = codigo
         session["datos_personales"] = datos
+        flash("Datos del paciente guardados correctamente.", "success")
         return redirect(url_for("formulario"))
 
-    return render_template("registro.html")
+    return render_template("registro.html", location_options=LOCATION_OPTIONS, form_data={})
 
 
 @app.route("/formulario", methods=["GET"])
@@ -850,9 +949,11 @@ def procesar():
             "respuestas": respuestas_q,
         }
 
+        flash("Evaluacion guardada correctamente.", "success")
         return redirect(url_for("resultado"))
 
     except Exception as exc:
+        flash(str(exc), "error")
         return render_template("index.html", error=str(exc), question_items=QUESTION_ITEMS)
 
 
@@ -916,9 +1017,6 @@ def download_evaluation_pdf(evaluacion_id):
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if session.get("user_role"):
-        return redirect(url_for("dashboard_redirect"))
-
     if request.method == "POST":
         correo = request.form.get("correo", "").strip().lower()
         password = request.form.get("password", "")
@@ -997,6 +1095,8 @@ def admin_dashboard():
             ev.created_at,
             p.codigo,
             p.nombre_paciente,
+            p.dni,
+            p.provincia,
             p.distrito
         FROM evaluaciones ev
         INNER JOIN pacientes p ON p.id = ev.paciente_id
@@ -1085,17 +1185,21 @@ def specialist_dashboard():
                 ev.created_at,
                 p.codigo,
                 p.nombre_paciente,
+                p.dni,
                 p.edad,
+                p.provincia,
                 p.distrito
             FROM evaluaciones ev
             INNER JOIN pacientes p ON p.id = ev.paciente_id
             WHERE
                 p.codigo ILIKE %s OR
+                COALESCE(p.dni, '') ILIKE %s OR
                 p.nombre_paciente ILIKE %s OR
+                COALESCE(p.provincia, '') ILIKE %s OR
                 COALESCE(p.distrito, '') ILIKE %s
             ORDER BY ev.created_at DESC;
             """,
-            tuple([f"%{query_text}%"] * 3),
+            tuple([f"%{query_text}%"] * 5),
         )
     else:
         evaluations = fetch_all(
@@ -1107,7 +1211,9 @@ def specialist_dashboard():
                 ev.created_at,
                 p.codigo,
                 p.nombre_paciente,
+                p.dni,
                 p.edad,
+                p.provincia,
                 p.distrito
             FROM evaluaciones ev
             INNER JOIN pacientes p ON p.id = ev.paciente_id
@@ -1192,4 +1298,4 @@ def add_note(evaluacion_id):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=True)
+    app.run(debug=True)

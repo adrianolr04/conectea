@@ -111,7 +111,9 @@
                                 <tr>
                                     <th>Código</th>
                                     <th>Paciente</th>
+                                    <th>DNI</th>
                                     <th>Edad</th>
+                                    <th>Provincia</th>
                                     <th>Distrito</th>
                                     <th>Nivel</th>
                                     <th>Score</th>
@@ -124,7 +126,9 @@
                                     <tr>
                                         <td>{{ item.codigo }}</td>
                                         <td>{{ item.nombre_paciente }}</td>
+                                        <td>{{ item.dni or '-' }}</td>
                                         <td>{{ item.edad or '-' }}</td>
+                                        <td>{{ item.provincia or '-' }}</td>
                                         <td>{{ item.distrito or '-' }}</td>
                                         <td>{{ item.nivel_autismo }}</td>
                                         <td>{{ item.score }}</td>
@@ -133,7 +137,7 @@
                                     </tr>
                                 {% else %}
                                     <tr>
-                                        <td colspan="8">No se encontraron evaluaciones con ese criterio.</td>
+                                        <td colspan="10">No se encontraron evaluaciones con ese criterio.</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>

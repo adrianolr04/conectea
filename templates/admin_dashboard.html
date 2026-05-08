@@ -145,6 +145,8 @@
                                 <tr>
                                     <th>Código</th>
                                     <th>Paciente</th>
+                                    <th>DNI</th>
+                                    <th>Provincia</th>
                                     <th>Distrito</th>
                                     <th>Nivel</th>
                                     <th>Detalle</th>
@@ -155,13 +157,15 @@
                                     <tr>
                                         <td>{{ item.codigo }}</td>
                                         <td>{{ item.nombre_paciente }}</td>
+                                        <td>{{ item.dni or '-' }}</td>
+                                        <td>{{ item.provincia or '-' }}</td>
                                         <td>{{ item.distrito or '-' }}</td>
                                         <td>{{ item.nivel_autismo }}</td>
                                         <td><a href="{{ url_for('evaluation_detail', evaluacion_id=item.id) }}" class="table-link">Ver</a></td>
                                     </tr>
                                 {% else %}
                                     <tr>
-                                        <td colspan="5">Todavía no hay evaluaciones registradas.</td>
+                                        <td colspan="7">Todavía no hay evaluaciones registradas.</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>

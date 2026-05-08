@@ -47,12 +47,20 @@
                             <span>{{ evaluation.codigo }}</span>
                         </div>
                         <div class="patient-item">
+                            <strong>DNI</strong>
+                            <span>{{ evaluation.dni or '-' }}</span>
+                        </div>
+                        <div class="patient-item">
                             <strong>Edad</strong>
                             <span>{{ evaluation.edad or '-' }}</span>
                         </div>
                         <div class="patient-item">
                             <strong>Sexo</strong>
                             <span>{{ evaluation.sexo or '-' }}</span>
+                        </div>
+                        <div class="patient-item">
+                            <strong>Provincia</strong>
+                            <span>{{ evaluation.provincia or '-' }}</span>
                         </div>
                         <div class="patient-item">
                             <strong>Distrito</strong>

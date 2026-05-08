@@ -52,9 +52,15 @@
                     <p>La interfaz está organizada para que el cuestionario sea más ligero de leer y responder.</p>
                 </div>
 
-                {% if error %}
-                    <div class="error">{{ error }}</div>
-                {% endif %}
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-stack">
+                            {% for category, message in messages %}
+                                <div class="{{ 'resultado' if category == 'success' else 'error' }}">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
 
                 <form method="POST" action="{{ url_for('procesar') }}">
                     <div class="form-grid" style="margin-bottom: 24px;">

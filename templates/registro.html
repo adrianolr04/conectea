@@ -22,9 +22,9 @@
             <aside class="sticky-column">
                 <div class="intro-card">
                     <div class="form-intro">
-                        <span class="eyebrow">Información inicial</span>
+                        <span class="eyebrow">Informaci&oacute;n inicial</span>
                         <p>
-                            Completa los datos del apoderado y del paciente para iniciar la evaluación.
+                            Completa los datos del apoderado y del paciente para iniciar la evaluaci&oacute;n.
                             Solo te pediremos lo necesario para continuar con el cuestionario.
                         </p>
                     </div>
@@ -33,9 +33,9 @@
                 <div class="summary-card">
                     <h3>Antes de continuar</h3>
                     <ul class="check-list">
-                        <li>Verifica que el correo y el teléfono estén bien escritos.</li>
-                        <li>El nombre del paciente y el distrito son obligatorios.</li>
-                        <li>Luego pasarás directamente al cuestionario.</li>
+                        <li>Verifica que el correo y el tel&eacute;fono est&eacute;n bien escritos.</li>
+                        <li>El DNI, nombre del paciente, provincia y distrito son obligatorios.</li>
+                        <li>Luego pasar&aacute;s directamente al cuestionario.</li>
                     </ul>
                 </div>
             </aside>
@@ -43,43 +43,66 @@
             <section class="form-card">
                 <div class="section-heading">
                     <h2>Datos del apoderado</h2>
-                    <p>Un formulario limpio y rápido para comenzar sin distracciones.</p>
+                    <p>Un formulario limpio y r&aacute;pido para comenzar sin distracciones.</p>
                 </div>
 
-                {% if error %}
-                    <div class="error">{{ error }}</div>
-                {% endif %}
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-stack">
+                            {% for category, message in messages %}
+                                <div class="{{ 'resultado' if category == 'success' else 'error' }}">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
 
                 <form method="POST" action="{{ url_for('registro') }}">
                     <div class="form-grid">
                         <div class="field-group">
                             <label for="nombre_padre" class="field-label">Nombre del padre</label>
-                            <input type="text" id="nombre_padre" name="nombre_padre" class="form-input">
+                            <input type="text" id="nombre_padre" name="nombre_padre" class="form-input" value="{{ form_data.get('nombre_padre', '') }}">
                         </div>
 
                         <div class="field-group">
                             <label for="nombre_madre" class="field-label">Nombre de la madre</label>
-                            <input type="text" id="nombre_madre" name="nombre_madre" class="form-input">
+                            <input type="text" id="nombre_madre" name="nombre_madre" class="form-input" value="{{ form_data.get('nombre_madre', '') }}">
                         </div>
 
                         <div class="field-group field-group--full">
                             <label for="nombre_paciente" class="field-label">Nombre del paciente</label>
-                            <input type="text" id="nombre_paciente" name="nombre_paciente" class="form-input" required>
+                            <input type="text" id="nombre_paciente" name="nombre_paciente" class="form-input" value="{{ form_data.get('nombre_paciente', '') }}" required>
+                        </div>
+
+                        <div class="field-group">
+                            <label for="dni" class="field-label">DNI del paciente</label>
+                            <input type="text" id="dni" name="dni" class="form-input" value="{{ form_data.get('dni', '') }}" inputmode="numeric" pattern="[0-9]{8}" maxlength="8" required>
+                        </div>
+
+                        <div class="field-group">
+                            <label for="provincia" class="field-label">Provincia</label>
+                            <select id="provincia" name="provincia" class="form-input" required>
+                                <option value="">Selecciona una provincia</option>
+                                {% for provincia in location_options %}
+                                    <option value="{{ provincia }}" {% if form_data.get('provincia') == provincia %}selected{% endif %}>{{ provincia }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
 
                         <div class="field-group">
                             <label for="distrito" class="field-label">Distrito</label>
-                            <input type="text" id="distrito" name="distrito" class="form-input" required>
+                            <select id="distrito" name="distrito" class="form-input" data-selected="{{ form_data.get('distrito', '') }}" required>
+                                <option value="">Selecciona un distrito</option>
+                            </select>
                         </div>
 
                         <div class="field-group">
-                            <label for="telefono" class="field-label">Número telefónico</label>
-                            <input type="tel" id="telefono" name="telefono" class="form-input" required>
+                            <label for="telefono" class="field-label">N&uacute;mero telef&oacute;nico</label>
+                            <input type="tel" id="telefono" name="telefono" class="form-input" value="{{ form_data.get('telefono', '') }}" required>
                         </div>
 
                         <div class="field-group field-group--full">
-                            <label for="correo" class="field-label">Correo electrónico</label>
-                            <input type="email" id="correo" name="correo" class="form-input" required>
+                            <label for="correo" class="field-label">Correo electr&oacute;nico</label>
+                            <input type="email" id="correo" name="correo" class="form-input" value="{{ form_data.get('correo', '') }}" required>
                         </div>
                     </div>
 
@@ -93,5 +116,30 @@
     </main>
 
     <script src="{{ url_for('static', filename='js/resultado.js') }}"></script>
+    <script>
+        const locationOptions = {{ location_options|tojson }};
+        const provinciaSelect = document.getElementById("provincia");
+        const distritoSelect = document.getElementById("distrito");
+
+        function refreshDistricts() {
+            const selectedProvincia = provinciaSelect.value;
+            const selectedDistrito = distritoSelect.dataset.selected;
+            distritoSelect.innerHTML = '<option value="">Selecciona un distrito</option>';
+
+            (locationOptions[selectedProvincia] || []).forEach((distrito) => {
+                const option = document.createElement("option");
+                option.value = distrito;
+                option.textContent = distrito;
+                option.selected = distrito === selectedDistrito;
+                distritoSelect.appendChild(option);
+            });
+        }
+
+        provinciaSelect.addEventListener("change", () => {
+            distritoSelect.dataset.selected = "";
+            refreshDistricts();
+        });
+        refreshDistricts();
+    </script>
 </body>
 </html>

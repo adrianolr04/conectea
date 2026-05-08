@@ -22,6 +22,16 @@
             </div>
         </div>
 
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="{{ 'resultado' if category == 'success' else 'error' }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
         <section class="result-layout">
             <aside class="sticky-column">
                 <div class="summary-card">
@@ -35,6 +45,18 @@
                             <div class="patient-item">
                                 <strong>Paciente</strong>
                                 <span>{{ datos_personales.nombre_paciente }}</span>
+                            </div>
+                            <div class="patient-item">
+                                <strong>DNI</strong>
+                                <span>{{ datos_personales.dni or '-' }}</span>
+                            </div>
+                            <div class="patient-item">
+                                <strong>Provincia</strong>
+                                <span>{{ datos_personales.provincia or '-' }}</span>
+                            </div>
+                            <div class="patient-item">
+                                <strong>Distrito</strong>
+                                <span>{{ datos_personales.distrito or '-' }}</span>
                             </div>
                         {% endif %}
 
