@@ -57,6 +57,49 @@ SCHEMA_READY = False
 
 modelo = MiterapModel(artifacts_dir="artifacts")
 
+QUESTION_ITEMS = [
+    {"number": 1, "text": "¿Es capaz de hablar usando frases u oraciones cortas?", "example": "Ejemplo: dice 'quiero agua' o 'vamos al parque' usando frases breves, no solo palabras sueltas."},
+    {"number": 2, "text": "¿Tiene conversaciones con él o con ella, en la que participen ambos y se vayan turnando o vayan construyendo sobre lo ya dicho?", "example": "Ejemplo: usted pregunta algo, responde y luego continúa el intercambio sin cortar la conversación."},
+    {"number": 3, "text": "¿Usa algunas veces frases raras o dice la misma cosa una y otra vez y casi exactamente de la misma manera ya sean frases que ha oído a otras personas o frases que se inventa?", "example": "Ejemplo: repite una frase de un video o programa muchas veces aunque no encaje con la situación."},
+    {"number": 4, "text": "¿Hace en ocasiones preguntas o afirmaciones socialmente inconvenientes, tales como preguntas indiscretas o comentarios personales en momentos inoportunos?", "example": "Ejemplo: hace comentarios muy personales en público sin notar que pueden incomodar."},
+    {"number": 5, "text": "¿Confunde a veces los pronombres diciendo, por ejemplo 'tú' o 'ella' en lugar de 'yo'?", "example": "Ejemplo: dice 'tú quieres agua' cuando en realidad habla de sí mismo."},
+    {"number": 6, "text": "¿Usa alguna vez palabras que ha inventado, expresa algunas cosas de una manera rara o indirecta o usa formas metafóricas para referirse a las cosas, como por ejemplo, decir 'lluvia caliente' en lugar de 'vapor'?", "example": "Ejemplo: nombra objetos con palabras inventadas o descripciones poco habituales que solo algunos entienden."},
+    {"number": 7, "text": "¿Dice en ocasiones la misma cosa una y otra vez y exactamente de la misma manera o insiste para que usted diga las mismas cosas una y otra vez?", "example": "Ejemplo: pide repetir la misma frase exacta varias veces seguidas."},
+    {"number": 8, "text": "¿Insiste alguna vez en hacer ciertas cosas de una manera o en un orden muy particular o hay determinados 'rituales' que pretende que usted respete?", "example": "Ejemplo: se altera si cambian el orden de su rutina o si un objeto no está donde espera."},
+    {"number": 9, "text": "¿Piensa usted que por lo general su expresión facial se puede considerar adecuada a la situación del momento?", "example": "Ejemplo: muestra alegría, tristeza o sorpresa de forma acorde con lo que está pasando."},
+    {"number": 10, "text": "¿Usa alguna vez la mano de usted como una herramienta o como si fuera parte de su propio cuerpo, por ejemplo, apuntando con su dedo o poniendo la mano de usted en el tirador de la puerta para lograr que la abriese?", "example": "Ejemplo: toma su mano y la coloca sobre algo para que usted haga la acción por él."},
+    {"number": 11, "text": "¿Muestra alguna vez interés por ciertas cosas que le preocupan mucho y que a otras personas les parecen extrañas, por ejemplo, semáforos, tuberías de desagüe u horarios de transporte?", "example": "Ejemplo: pasa mucho tiempo pendiente de un tema muy específico poco común para su edad."},
+    {"number": 12, "text": "¿Se interesa algunas veces más en las piezas de un juguete o de un objeto, por ejemplo dar vueltas a las ruedas de un coche, que en usar el objeto de acuerdo a su finalidad?", "example": "Ejemplo: gira las ruedas del carro repetidamente en vez de jugar con el carro completo."},
+    {"number": 13, "text": "¿Muestra un interés especial por algún tema, por ejemplo trenes o dinosaurios, que aun siendo normal a su edad y en su ambiente, parece fuera de lo normal por su intensidad?", "example": "Ejemplo: habla del mismo tema con gran detalle y mucha frecuencia durante el día."},
+    {"number": 14, "text": "¿Muestra a veces interés excepcional por la vista, el tacto, el sonido, el sabor o el olor de las cosas o las personas?", "example": "Ejemplo: busca, evita o reacciona mucho ante texturas, sonidos, luces u olores."},
+    {"number": 15, "text": "¿Realiza en ocasiones gestos o movimientos extraños con las manos o los dedos, como agitar o mover sus dedos delante de sus ojos?", "example": "Ejemplo: mueve las manos frente a la cara o mira sus dedos mientras los agita."},
+    {"number": 16, "text": "¿Realiza en ocasiones movimientos complicados de su cuerpo, como dar vueltas, retorcerse o dar saltos repetidos en el sitio?", "example": "Ejemplo: gira sobre sí mismo o salta muchas veces seguidas sin una actividad concreta."},
+    {"number": 17, "text": "¿Se hace daño a propósito alguna vez, por ejemplo, mordiéndose un brazo o golpeándose la cabeza?", "example": "Ejemplo: cuando se frustra, se muerde, se golpea o se lastima de manera intencional."},
+    {"number": 18, "text": "¿Tiene algún objeto que necesita llevar consigo, aparte de un muñeco o una manta?", "example": "Ejemplo: insiste en llevar siempre una tapa, cuerda, piedra u otro objeto específico."},
+    {"number": 19, "text": "¿Tiene un amigo íntimo o alguna amistad en particular?", "example": "Ejemplo: busca con frecuencia a un niño específico para jugar o compartir."},
+    {"number": 20, "text": "¿Habla con usted alguna vez solo para ser simpático y amable y no para conseguir algo?", "example": "Ejemplo: se acerca a conversar o contar algo sin pedir ayuda ni objetos."},
+    {"number": 21, "text": "¿Imita alguna vez espontáneamente a otras personas o lo que hacen, como pasar la aspiradora, cocinar o arreglar cosas?", "example": "Ejemplo: copia actividades de los adultos por iniciativa propia durante el juego."},
+    {"number": 22, "text": "¿Señala alguna vez espontáneamente las cosas que ve solo para mostrárselas a usted y no porque quiera obtenerlas?", "example": "Ejemplo: apunta a un avión o un perro solo para compartir lo que vio."},
+    {"number": 23, "text": "¿Hace alguna vez gestos para indicarle lo que quiere, aparte de señalar el objeto o tirarle a usted de la mano?", "example": "Ejemplo: hace señas con la mano para pedir ayuda, acercarse o cargarlo."},
+    {"number": 24, "text": "¿Asiente con la cabeza para decir sí?", "example": "Ejemplo: mueve la cabeza afirmativamente cuando acepta algo."},
+    {"number": 25, "text": "¿Niega con la cabeza para decir no?", "example": "Ejemplo: mueve la cabeza de lado a lado para rechazar comida, juego o ayuda."},
+    {"number": 26, "text": "Al hablarle o hacer algo con usted, ¿suele mirarle directamente a la cara?", "example": "Ejemplo: mientras interactúan, suele buscar su rostro o sus ojos por algunos instantes."},
+    {"number": 27, "text": "¿Devuelve la sonrisa cuando alguien le sonríe?", "example": "Ejemplo: si usted le sonríe, normalmente responde sonriendo también."},
+    {"number": 28, "text": "¿Le muestra a usted cosas que le interesan a fin de captar su atención?", "example": "Ejemplo: le enseña un dibujo o un juguete para que usted lo mire con él."},
+    {"number": 29, "text": "¿Se ofrece alguna vez a compartir cosas con usted, aparte de alimentos?", "example": "Ejemplo: le ofrece un juguete u objeto que le gusta sin que usted se lo pida."},
+    {"number": 30, "text": "En su opinión, ¿quiere alguna vez que usted participe en sus juegos?", "example": "Ejemplo: lo invita a jugar, le da un rol o le acerca juguetes para hacerlo juntos."},
+    {"number": 31, "text": "¿Intenta alguna vez consolarle si ve que usted está triste o se ha hecho daño?", "example": "Ejemplo: se acerca, pregunta qué pasó o intenta ayudar cuando lo ve mal."},
+    {"number": 32, "text": "Cuando quiere algo o buscaba ayuda, ¿le mira y hace gestos con sonidos o palabras para captar su atención?", "example": "Ejemplo: combina mirada, gesto y voz para pedir ayuda con algo."},
+    {"number": 33, "text": "¿Muestra una variedad normal de expresiones faciales?", "example": "Ejemplo: cambia de expresión según esté alegre, molesto, sorprendido o triste."},
+    {"number": 34, "text": "¿Alguna vez se une a juegos de grupo y trata de imitar las acciones y juegos sociales que se están haciendo?", "example": "Ejemplo: observa a otros niños jugando y se suma intentando seguir lo que hacen."},
+    {"number": 35, "text": "¿Juega a disfrazarse, a simular que es otra persona o a juegos de ficción en general?", "example": "Ejemplo: hace como si cocinara, fuera doctor o interpretara personajes."},
+    {"number": 36, "text": "¿Muestra interés por niños de su edad a los que no conoce?", "example": "Ejemplo: mira, se acerca o intenta interactuar con niños nuevos en el parque o colegio."},
+    {"number": 37, "text": "¿Responde positivamente cuando se le acerca otro niño?", "example": "Ejemplo: responde al saludo, acepta jugar o continúa la interacción con agrado."},
+    {"number": 38, "text": "Si usted entra a un cuarto y empieza a hablarle sin decir su nombre, ¿por lo general levanta la vista y le presta atención?", "example": "Ejemplo: al escuchar su voz, deja un momento lo que hace y mira para atender."},
+    {"number": 39, "text": "¿Participa alguna vez con otros niños en juegos de ficción, de tal manera que quede claro que unos y otros comprenden en qué consiste el juego?", "example": "Ejemplo: juega a la casita, a la tienda o a personajes con una idea compartida."},
+    {"number": 40, "text": "¿Participaba activamente en juegos que requieren colaborar con otros niños en grupo, como jugar al escondite o a la pelota?", "example": "Ejemplo: toma turnos, sigue reglas simples y coopera con otros niños durante el juego."},
+]
+
 
 def get_connection():
     if DATABASE_URL:
