@@ -85,7 +85,7 @@
 
                 <article class="summary-card">
                     <h3>Búsqueda</h3>
-                    <p>Busca por código, nombre del paciente o distrito para encontrar un caso más rápido.</p>
+                    <p>Busca por código, DNI, paciente, departamento, provincia o distrito para encontrar un caso más rápido.</p>
                 </article>
             </aside>
 
@@ -93,7 +93,7 @@
                 <article class="result-block">
                     <form method="GET" action="{{ url_for('specialist_dashboard') }}">
                         <div class="search-row">
-                            <input type="text" name="q" value="{{ query_text }}" class="form-input" placeholder="Buscar por código, paciente o distrito">
+                            <input type="text" name="q" value="{{ query_text }}" class="form-input" placeholder="Buscar por código, DNI, paciente o ubicación">
                             <button type="submit" class="submit-btn">Buscar</button>
                         </div>
                     </form>
@@ -113,6 +113,7 @@
                                     <th>Paciente</th>
                                     <th>DNI</th>
                                     <th>Edad</th>
+                                    <th>Departamento</th>
                                     <th>Provincia</th>
                                     <th>Distrito</th>
                                     <th>Nivel</th>
@@ -128,6 +129,7 @@
                                         <td>{{ item.nombre_paciente }}</td>
                                         <td>{{ item.dni or '-' }}</td>
                                         <td>{{ item.edad or '-' }}</td>
+                                        <td>{{ item.departamento or '-' }}</td>
                                         <td>{{ item.provincia or '-' }}</td>
                                         <td>{{ item.distrito or '-' }}</td>
                                         <td>{{ item.nivel_autismo }}</td>
@@ -137,7 +139,7 @@
                                     </tr>
                                 {% else %}
                                     <tr>
-                                        <td colspan="10">No se encontraron evaluaciones con ese criterio.</td>
+                                        <td colspan="11">No se encontraron evaluaciones con ese criterio.</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>

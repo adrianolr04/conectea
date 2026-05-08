@@ -34,7 +34,7 @@
                     <h3>Antes de continuar</h3>
                     <ul class="check-list">
                         <li>Verifica que el correo y el tel&eacute;fono est&eacute;n bien escritos.</li>
-                        <li>El DNI, nombre del paciente, provincia y distrito son obligatorios.</li>
+                        <li>El DNI, nombre del paciente, departamento, provincia y distrito son obligatorios.</li>
                         <li>Luego pasar&aacute;s directamente al cuestionario.</li>
                     </ul>
                 </div>
@@ -79,12 +79,19 @@
                         </div>
 
                         <div class="field-group">
-                            <label for="provincia" class="field-label">Provincia</label>
-                            <select id="provincia" name="provincia" class="form-input" required>
-                                <option value="">Selecciona una provincia</option>
-                                {% for provincia in location_options %}
-                                    <option value="{{ provincia }}" {% if form_data.get('provincia') == provincia %}selected{% endif %}>{{ provincia }}</option>
+                            <label for="departamento" class="field-label">Departamento</label>
+                            <select id="departamento" name="departamento" class="form-input" required>
+                                <option value="">Selecciona un departamento</option>
+                                {% for departamento in location_options %}
+                                    <option value="{{ departamento }}" {% if form_data.get('departamento') == departamento %}selected{% endif %}>{{ departamento }}</option>
                                 {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="field-group">
+                            <label for="provincia" class="field-label">Provincia</label>
+                            <select id="provincia" name="provincia" class="form-input" data-selected="{{ form_data.get('provincia', '') }}" required>
+                                <option value="">Selecciona una provincia</option>
                             </select>
                         </div>
 
@@ -118,15 +125,33 @@
     <script src="{{ url_for('static', filename='js/resultado.js') }}"></script>
     <script>
         const locationOptions = {{ location_options|tojson }};
+        const departamentoSelect = document.getElementById("departamento");
         const provinciaSelect = document.getElementById("provincia");
         const distritoSelect = document.getElementById("distrito");
 
+        function refreshProvinces() {
+            const selectedDepartamento = departamentoSelect.value;
+            const selectedProvincia = provinciaSelect.dataset.selected;
+            provinciaSelect.innerHTML = '<option value="">Selecciona una provincia</option>';
+
+            Object.keys(locationOptions[selectedDepartamento] || {}).forEach((provincia) => {
+                const option = document.createElement("option");
+                option.value = provincia;
+                option.textContent = provincia;
+                option.selected = provincia === selectedProvincia;
+                provinciaSelect.appendChild(option);
+            });
+
+            refreshDistricts();
+        }
+
         function refreshDistricts() {
+            const selectedDepartamento = departamentoSelect.value;
             const selectedProvincia = provinciaSelect.value;
             const selectedDistrito = distritoSelect.dataset.selected;
             distritoSelect.innerHTML = '<option value="">Selecciona un distrito</option>';
 
-            (locationOptions[selectedProvincia] || []).forEach((distrito) => {
+            ((locationOptions[selectedDepartamento] || {})[selectedProvincia] || []).forEach((distrito) => {
                 const option = document.createElement("option");
                 option.value = distrito;
                 option.textContent = distrito;
@@ -135,11 +160,16 @@
             });
         }
 
+        departamentoSelect.addEventListener("change", () => {
+            provinciaSelect.dataset.selected = "";
+            distritoSelect.dataset.selected = "";
+            refreshProvinces();
+        });
         provinciaSelect.addEventListener("change", () => {
             distritoSelect.dataset.selected = "";
             refreshDistricts();
         });
-        refreshDistricts();
+        refreshProvinces();
     </script>
 </body>
 </html>

@@ -38,87 +38,15 @@ DEFAULT_ADMIN_NAME = os.getenv("ADMIN_NAME", "Administrador")
 DEFAULT_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 DEFAULT_ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
-LOCATION_OPTIONS = {
-    "Lima": [
-        "Ancon",
-        "Ate",
-        "Barranco",
-        "Brena",
-        "Carabayllo",
-        "Chaclacayo",
-        "Chorrillos",
-        "Cieneguilla",
-        "Comas",
-        "El Agustino",
-        "Independencia",
-        "Jesus Maria",
-        "La Molina",
-        "La Victoria",
-        "Lima",
-        "Lince",
-        "Los Olivos",
-        "Lurigancho",
-        "Lurin",
-        "Magdalena del Mar",
-        "Miraflores",
-        "Pachacamac",
-        "Pucusana",
-        "Pueblo Libre",
-        "Puente Piedra",
-        "Punta Hermosa",
-        "Punta Negra",
-        "Rimac",
-        "San Bartolo",
-        "San Borja",
-        "San Isidro",
-        "San Juan de Lurigancho",
-        "San Juan de Miraflores",
-        "San Luis",
-        "San Martin de Porres",
-        "San Miguel",
-        "Santa Anita",
-        "Santa Maria del Mar",
-        "Santa Rosa",
-        "Santiago de Surco",
-        "Surquillo",
-        "Villa El Salvador",
-        "Villa Maria del Triunfo",
-    ],
-    "Callao": [
-        "Bellavista",
-        "Callao",
-        "Carmen de la Legua Reynoso",
-        "La Perla",
-        "La Punta",
-        "Mi Peru",
-        "Ventanilla",
-    ],
-    "Canete": [
-        "Asia",
-        "Calango",
-        "Cerro Azul",
-        "Chilca",
-        "Imperial",
-        "Mala",
-        "Nuevo Imperial",
-        "San Vicente de Canete",
-    ],
-    "Huaral": [
-        "Aucallama",
-        "Chancay",
-        "Huaral",
-        "Ihuari",
-        "Sumbilca",
-    ],
-    "Huaura": [
-        "Caleta de Carquin",
-        "Huacho",
-        "Hualmay",
-        "Huaura",
-        "Santa Maria",
-        "Vegueta",
-    ],
-}
+LOCATION_DATA_PATH = os.path.join(app.root_path if "app" in globals() else os.path.dirname(__file__), "static", "data", "ubigeo_peru.json")
+
+
+def load_location_options():
+    with open(LOCATION_DATA_PATH, encoding="utf-8") as locations_file:
+        return json.load(locations_file)
+
+
+LOCATION_OPTIONS = load_location_options()
 
 SCHEMA_READY = False
 
@@ -183,6 +111,7 @@ def ensure_schema():
                 nombre_madre VARCHAR(150),
                 dni VARCHAR(20),
                 nombre_paciente VARCHAR(150) NOT NULL,
+                departamento VARCHAR(120),
                 provincia VARCHAR(120),
                 distrito VARCHAR(120),
                 telefono VARCHAR(30),
@@ -229,6 +158,7 @@ def ensure_schema():
             """
         )
         cur.execute("ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS dni VARCHAR(20);")
+        cur.execute("ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS departamento VARCHAR(120);")
         cur.execute("ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS provincia VARCHAR(120);")
 
         cur.execute("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1;")
@@ -350,6 +280,7 @@ def build_evaluation_detail(evaluacion_id):
             p.nombre_padre,
             p.nombre_madre,
             p.dni,
+            p.departamento,
             p.provincia,
             p.distrito,
             p.telefono,
@@ -669,6 +600,7 @@ def build_pdf_document(data_eval, datos_personales, datos_nino, generated_at=Non
                 ("Nombre de la madre", datos_personales.get("nombre_madre", "-") or "-"),
                 ("Paciente", datos_personales.get("nombre_paciente", "-") or "-"),
                 ("DNI", datos_personales.get("dni", "-") or "-"),
+                ("Departamento", datos_personales.get("departamento", "-") or "-"),
                 ("Provincia", datos_personales.get("provincia", "-") or "-"),
                 ("Distrito", datos_personales.get("distrito", "-") or "-"),
                 ("Teléfono", datos_personales.get("telefono", "-") or "-"),
@@ -727,6 +659,7 @@ def build_pdf_payload_from_evaluation(evaluation):
             "nombre_madre": evaluation.get("nombre_madre", ""),
             "dni": evaluation.get("dni", ""),
             "nombre_paciente": evaluation.get("nombre_paciente", ""),
+            "departamento": evaluation.get("departamento", ""),
             "provincia": evaluation.get("provincia", ""),
             "distrito": evaluation.get("distrito", ""),
             "telefono": evaluation.get("telefono", ""),
@@ -754,6 +687,7 @@ def registro():
             "nombre_madre": request.form.get("nombre_madre", "").strip(),
             "dni": request.form.get("dni", "").strip(),
             "nombre_paciente": request.form.get("nombre_paciente", "").strip(),
+            "departamento": request.form.get("departamento", "").strip(),
             "provincia": request.form.get("provincia", "").strip(),
             "distrito": request.form.get("distrito", "").strip(),
             "telefono": request.form.get("telefono", "").strip(),
@@ -763,6 +697,7 @@ def registro():
         if (
             not datos["dni"]
             or not datos["nombre_paciente"]
+            or not datos["departamento"]
             or not datos["provincia"]
             or not datos["distrito"]
             or not datos["telefono"]
@@ -783,8 +718,12 @@ def registro():
                 form_data=datos,
             )
 
-        if datos["provincia"] not in LOCATION_OPTIONS or datos["distrito"] not in LOCATION_OPTIONS[datos["provincia"]]:
-            flash("Selecciona una provincia y distrito validos.", "error")
+        if (
+            datos["departamento"] not in LOCATION_OPTIONS
+            or datos["provincia"] not in LOCATION_OPTIONS[datos["departamento"]]
+            or datos["distrito"] not in LOCATION_OPTIONS[datos["departamento"]][datos["provincia"]]
+        ):
+            flash("Selecciona un departamento, provincia y distrito validos.", "error")
             return render_template(
                 "registro.html",
                 location_options=LOCATION_OPTIONS,
@@ -801,12 +740,13 @@ def registro():
                     nombre_madre,
                     dni,
                     nombre_paciente,
+                    departamento,
                     provincia,
                     distrito,
                     telefono,
                     correo
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id;
                 """,
                 (
@@ -814,6 +754,7 @@ def registro():
                     datos["nombre_madre"],
                     datos["dni"],
                     datos["nombre_paciente"],
+                    datos["departamento"],
                     datos["provincia"],
                     datos["distrito"],
                     datos["telefono"],
@@ -1096,6 +1037,7 @@ def admin_dashboard():
             p.codigo,
             p.nombre_paciente,
             p.dni,
+            p.departamento,
             p.provincia,
             p.distrito
         FROM evaluaciones ev
@@ -1187,6 +1129,7 @@ def specialist_dashboard():
                 p.nombre_paciente,
                 p.dni,
                 p.edad,
+                p.departamento,
                 p.provincia,
                 p.distrito
             FROM evaluaciones ev
@@ -1195,11 +1138,12 @@ def specialist_dashboard():
                 p.codigo ILIKE %s OR
                 COALESCE(p.dni, '') ILIKE %s OR
                 p.nombre_paciente ILIKE %s OR
+                COALESCE(p.departamento, '') ILIKE %s OR
                 COALESCE(p.provincia, '') ILIKE %s OR
                 COALESCE(p.distrito, '') ILIKE %s
             ORDER BY ev.created_at DESC;
             """,
-            tuple([f"%{query_text}%"] * 5),
+            tuple([f"%{query_text}%"] * 6),
         )
     else:
         evaluations = fetch_all(
@@ -1213,6 +1157,7 @@ def specialist_dashboard():
                 p.nombre_paciente,
                 p.dni,
                 p.edad,
+                p.departamento,
                 p.provincia,
                 p.distrito
             FROM evaluaciones ev
