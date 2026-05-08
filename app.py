@@ -1132,7 +1132,8 @@ def procesar():
 
         resultado_modelo = modelo.predecir_desde_cuestionario(sexo, edad, respuestas_q)
         score = float(resultado_modelo["score"])
-        score_pct = score / 40 * 100
+        max_score = float(resultado_modelo.get("max_score", 40))
+        score_pct = score / max_score * 100 if max_score else 0
         probabilidades = {k: float(v) for k, v in resultado_modelo["probabilidades"].items()}
 
         conn = None
