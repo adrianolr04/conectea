@@ -704,6 +704,45 @@ def add_pdf_responses_table(pdf, respuestas):
         fill = not fill
 
 
+def add_pdf_summary_card(pdf, data_eval, generated_at):
+    score = data_eval.get("score", 0)
+    score_pct = data_eval.get("score_pct", 0)
+    level = data_eval.get("clase_predicha_texto", "-") or "-"
+    generated_label = generated_at.strftime("%d/%m/%Y %H:%M") if generated_at else "-"
+
+    y = pdf.get_y()
+    card_width = pdf.w - pdf.l_margin - pdf.r_margin
+    pdf.set_fill_color(252, 250, 247)
+    pdf.set_draw_color(231, 225, 217)
+    pdf.rect(pdf.l_margin, y, card_width, 34, style="DF")
+
+    pdf.set_xy(pdf.l_margin + 5, y + 5)
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_text_color(201, 108, 74)
+    pdf.cell(36, 8, pdf_safe(f"{float(score):.2f}"), new_x="RIGHT", new_y="TOP")
+
+    pdf.set_xy(pdf.l_margin + 5, y + 15)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(88, 98, 110)
+    pdf.cell(36, 5, pdf_safe(f"{float(score_pct):.1f}% del puntaje maximo"))
+
+    pdf.set_xy(pdf.l_margin + 50, y + 6)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(31, 41, 55)
+    pdf.cell(0, 6, pdf_safe(level), new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_xy(pdf.l_margin + 50, y + 16)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(88, 98, 110)
+    pdf.multi_cell(
+        card_width - 55,
+        5,
+        pdf_safe(f"Evaluacion registrada el {generated_label}. Usa este resultado como apoyo para seguimiento."),
+    )
+
+    pdf.set_y(y + 39)
+
+
 def build_pdf_document(data_eval, datos_personales, datos_nino, generated_at=None):
     pdf = FPDF()
     pdf.add_page()
