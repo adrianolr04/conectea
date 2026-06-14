@@ -56,16 +56,18 @@
                     {% endif %}
                 {% endwith %}
 
-                <form method="POST" action="{{ url_for('registro') }}">
+                <form id="registrationForm" method="POST" action="{{ url_for('registro') }}" novalidate>
+                    <div id="registrationValidationMessage" class="form-validation-message" role="alert" aria-live="polite" hidden></div>
+
                     <div class="form-grid">
                         <div class="field-group">
                             <label for="nombre_padre" class="field-label">Nombre del padre</label>
-                            <input type="text" id="nombre_padre" name="nombre_padre" class="form-input" value="{{ form_data.get('nombre_padre', '') }}" placeholder="Opcional, se guardara '-' si se omite">
+                            <input type="text" id="nombre_padre" name="nombre_padre" class="form-input" value="{{ form_data.get('nombre_padre', '') }}" required>
                         </div>
 
                         <div class="field-group">
                             <label for="nombre_madre" class="field-label">Nombre de la madre</label>
-                            <input type="text" id="nombre_madre" name="nombre_madre" class="form-input" value="{{ form_data.get('nombre_madre', '') }}" placeholder="Opcional, se guardara '-' si se omite">
+                            <input type="text" id="nombre_madre" name="nombre_madre" class="form-input" value="{{ form_data.get('nombre_madre', '') }}" required>
                         </div>
 
                         <div class="field-group field-group--full">
@@ -123,6 +125,7 @@
     </main>
 
     <script src="{{ url_for('static', filename='js/resultado.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/registro.js') }}"></script>
     <script>
         const locationOptions = {{ location_options|tojson }};
         const departamentoSelect = document.getElementById("departamento");

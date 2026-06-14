@@ -998,11 +998,11 @@ def registro():
             "telefono": request.form.get("telefono", "").strip(),
             "correo": request.form.get("correo", "").strip(),
         }
-        datos["nombre_padre"] = datos["nombre_padre"] or "-"
-        datos["nombre_madre"] = datos["nombre_madre"] or "-"
 
         if (
-            not datos["dni"]
+            not datos["nombre_padre"]
+            or not datos["nombre_madre"]
+            or not datos["dni"]
             or not datos["nombre_paciente"]
             or not datos["departamento"]
             or not datos["provincia"]
@@ -1010,7 +1010,7 @@ def registro():
             or not datos["telefono"]
             or not datos["correo"]
         ):
-            flash("Completa todos los campos obligatorios antes de continuar.", "error")
+            flash("Campo obligatorio. En caso de omitir, colocar '-'.", "error")
             return render_template(
                 "registro.html",
                 location_options=LOCATION_OPTIONS,
