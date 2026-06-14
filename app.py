@@ -998,6 +998,8 @@ def registro():
             "telefono": request.form.get("telefono", "").strip(),
             "correo": request.form.get("correo", "").strip(),
         }
+        datos["nombre_padre"] = datos["nombre_padre"] or "-"
+        datos["nombre_madre"] = datos["nombre_madre"] or "-"
 
         if (
             not datos["dni"]

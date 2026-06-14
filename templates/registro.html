@@ -60,12 +60,12 @@
                     <div class="form-grid">
                         <div class="field-group">
                             <label for="nombre_padre" class="field-label">Nombre del padre</label>
-                            <input type="text" id="nombre_padre" name="nombre_padre" class="form-input" value="{{ form_data.get('nombre_padre', '') }}">
+                            <input type="text" id="nombre_padre" name="nombre_padre" class="form-input" value="{{ form_data.get('nombre_padre', '') }}" placeholder="Opcional, se guardara '-' si se omite">
                         </div>
 
                         <div class="field-group">
                             <label for="nombre_madre" class="field-label">Nombre de la madre</label>
-                            <input type="text" id="nombre_madre" name="nombre_madre" class="form-input" value="{{ form_data.get('nombre_madre', '') }}">
+                            <input type="text" id="nombre_madre" name="nombre_madre" class="form-input" value="{{ form_data.get('nombre_madre', '') }}" placeholder="Opcional, se guardara '-' si se omite">
                         </div>
 
                         <div class="field-group field-group--full">
