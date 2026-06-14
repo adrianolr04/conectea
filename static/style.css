@@ -624,6 +624,26 @@ input[type="radio"]:checked + .radio-label {
     color: #235741;
 }
 
+.form-validation-message {
+    margin-bottom: 18px;
+    padding: 13px 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(211, 87, 69, 0.28);
+    background: rgba(211, 87, 69, 0.1);
+    color: #842c1f;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.form-validation-message[hidden] {
+    display: none;
+}
+
+.field-error {
+    border-color: rgba(211, 87, 69, 0.72) !important;
+    box-shadow: 0 0 0 4px rgba(211, 87, 69, 0.14) !important;
+}
+
 .summary-list,
 .patient-list {
     display: grid;

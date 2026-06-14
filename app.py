@@ -1116,15 +1116,27 @@ def procesar():
         sexo = request.form.get("sexo")
         edad_str = request.form.get("edad")
 
-        if not sexo or edad_str is None:
-            raise ValueError("Debes ingresar sexo y edad.")
+        if not sexo:
+            raise ValueError("Por favor, seleccione el g\u00e9nero del paciente.")
 
-        edad = int(edad_str)
+        if not edad_str:
+            raise ValueError("Ingrese una edad v\u00e1lida para continuar.")
+
+        try:
+            edad = int(edad_str)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Ingrese una edad v\u00e1lida para continuar.") from exc
+
+        if edad < 4 or edad > 12:
+            raise ValueError("Ingrese una edad v\u00e1lida para continuar.")
+
         respuestas_q = []
         for index in range(1, 41):
             valor_str = request.form.get(f"Q{index}")
             if valor_str is None or valor_str == "":
-                raise ValueError(f"Falta respuesta en la pregunta Q{index}.")
+                raise ValueError("Debe responder todas las preguntas antes de continuar.")
+            if valor_str not in ("0", "1"):
+                raise ValueError("Debe responder todas las preguntas antes de continuar.")
             respuestas_q.append(int(valor_str))
 
         datos_pers = session.get("datos_personales")

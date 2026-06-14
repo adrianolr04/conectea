@@ -62,7 +62,9 @@
                     {% endif %}
                 {% endwith %}
 
-                <form method="POST" action="{{ url_for('procesar') }}">
+                <form id="evaluationForm" method="POST" action="{{ url_for('procesar') }}" novalidate>
+                    <div id="formValidationMessage" class="form-validation-message" role="alert" aria-live="polite" hidden></div>
+
                     <div class="form-grid" style="margin-bottom: 24px;">
                         <div class="field-group">
                             <label for="sexo" class="field-label">Sexo</label>
@@ -81,7 +83,7 @@
 
                     <div class="preguntas">
                         {% for item in question_items %}
-                            <div class="pregunta">
+                            <div class="pregunta" data-question-card>
                                 <div class="question-header">
                                     <span class="question-number">Pregunta {{ item.number }}</span>
                                     <div class="info-popover">
@@ -118,6 +120,7 @@
         </section>
     </main>
 
+    <script src="{{ url_for('static', filename='js/formulario.js') }}"></script>
     <script src="{{ url_for('static', filename='js/resultado.js') }}"></script>
 </body>
 </html>
