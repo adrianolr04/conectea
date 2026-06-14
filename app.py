@@ -1010,7 +1010,7 @@ def registro():
             or not datos["telefono"]
             or not datos["correo"]
         ):
-            flash("Campo obligatorio. En caso de omitir, colocar '-'.", "error")
+            flash("Completa todos los campos obligatorios antes de continuar.", "error")
             return render_template(
                 "registro.html",
                 location_options=LOCATION_OPTIONS,
