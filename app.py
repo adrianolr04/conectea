@@ -1122,15 +1122,15 @@ def procesar():
             raise ValueError("Por favor, seleccione el g\u00e9nero del paciente.")
 
         if not edad_str:
-            raise ValueError("Ingrese una edad v\u00e1lida para continuar.")
+            raise ValueError("Ingrese una edad v\u00e1lida entre 4 y 12 a\u00f1os para continuar.")
 
         try:
             edad = int(edad_str)
         except (TypeError, ValueError) as exc:
-            raise ValueError("Ingrese una edad v\u00e1lida para continuar.") from exc
+            raise ValueError("Ingrese una edad v\u00e1lida entre 4 y 12 a\u00f1os para continuar.") from exc
 
         if edad < 4 or edad > 12:
-            raise ValueError("Ingrese una edad v\u00e1lida para continuar.")
+            raise ValueError("Ingrese una edad v\u00e1lida entre 4 y 12 a\u00f1os para continuar.")
 
         respuestas_q = []
         for index in range(1, 41):

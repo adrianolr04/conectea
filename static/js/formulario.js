@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!edad.value || !Number.isInteger(edadValue) || edadValue < 4 || edadValue > 12) {
             event.preventDefault();
-            showMessage("Ingrese una edad v\u00e1lida para continuar.", edad);
+            showMessage("Ingrese una edad v\u00e1lida entre 4 y 12 a\u00f1os para continuar.", edad);
             return;
         }
 
