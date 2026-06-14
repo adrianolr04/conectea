@@ -27,6 +27,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from miterap_model import MiterapModel
 
 
+# Comentario de prueba: Codex puede modificar este proyecto.
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_secret_key")
 app.config["SESSION_COOKIE_HTTPONLY"] = True
